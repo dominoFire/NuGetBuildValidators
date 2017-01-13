@@ -15,21 +15,31 @@ namespace NuGetStringChecker
     class Program
     {
         private static ConcurrentQueue<string> _errors = new ConcurrentQueue<string>();
+        private static int _numberOfThreads = 8;
 
         public static void Main(string[] args)
         {
-            var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
+            if(args.Count() < 3)
+            {
+                Console.WriteLine("Please enter 3 arguments - ");
+                Console.WriteLine("arg[0]: NuGet.Tools.Vsix path");
+                Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be already present, but Program should have write access to the location.");
+                Console.WriteLine("arg[2]: Path to the log File for writing errors. File need not be already present, but Program should have write access to the location.");
+                Console.WriteLine("Exiting...");
+                return;
+            }
 
-            var extractedVsixPath = @"F:\validation\NuGet.Tools";
+            var vsixPath = args[0]; //@"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
+            var extractedVsixPath = args[1]; //@"F:\validation\NuGet.Tools";
+            var logPath = args[2]; // @"F:\validation\log.txt";
 
-            var logPath = @"F:\validation\log.txt";
+            CleanExtractedFiles(extractedVsixPath);
 
-            //ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);
+            ExtractVsix(vsixPath, extractedVsixPath);
 
             var englishDlls = GetEnglishDlls(extractedVsixPath);
-            //var englishDlls = new string[] { @"F:\validation\NuGet.Tools\NuGet.Packaging.dll" };
 
-            ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = 1 };
+            ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
             {
                 Console.WriteLine($"Validating strings for ${englishDll}");
@@ -51,9 +61,8 @@ namespace NuGetStringChecker
                 }
             });
 
-            Console.WriteLine($"Total error count: {_errors.Count()}");
-            Console.WriteLine($"Errors logged at: {logPath}");
             LogErrors(logPath);
+            CleanExtractedFiles(extractedVsixPath);
         }
 
         private static string[] GetEnglishDlls(string extractedVsixPath)
@@ -108,12 +117,21 @@ namespace NuGetStringChecker
                         var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
                         if (secondResource == null)
                         {
-                            _errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not found in {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}================================================================================================================");
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' "+
+                                $"NOT FOUND in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}"+
+                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}"+
+                                "================================================================================================================";
+                            _errors.Enqueue(error);
                             return false;
                         }
                         else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
                         {
-                            _errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not same as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}=======================================================================================");
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' "+
+                                $"NOT SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}"+
+                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}"+
+                                $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}"+
+                                "================================================================================================================";
+                            _errors.Enqueue(error);
                             return false;
                         }
                     }
@@ -193,6 +211,9 @@ namespace NuGetStringChecker
 
         private static void LogErrors(string path)
         {
+            Console.WriteLine($"Total error count: {_errors.Count()}");
+            Console.WriteLine($"Errors logged at: {path}");
+
             if (File.Exists(path))
             {
                 File.Delete(path);
@@ -205,6 +226,24 @@ namespace NuGetStringChecker
                     w.WriteLine(error);
                 }
             }
+        }
+
+        private static void CleanExtractedFiles(string path)
+        {
+            Console.WriteLine("Cleaning up the extracted files");
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+
+        private static void ExtractVsix(string vsixPath, string extractedVsixPath)
+        {
+            Console.WriteLine($"Extracting {vsixPath} to {extractedVsixPath}");
+
+            ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);
+
+            Console.WriteLine($"Done Extracting...");
         }
     }
 }
