@@ -14,13 +14,15 @@ namespace NuGetStringChecker
 {
     class Program
     {
-        static ConcurrentQueue<string> errors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _errors = new ConcurrentQueue<string>();
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
 
             var extractedVsixPath = @"F:\validation\NuGet.Tools";
+
+            var logPath = @"F:\validation\log.txt";
 
             //ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);
 
@@ -44,37 +46,39 @@ namespace NuGetStringChecker
                     }
                     catch(Exception e)
                     {
-                        Console.WriteLine(e.InnerException);
+                        Console.WriteLine(e);
                     }
                 }
             });
 
-            Console.WriteLine($"Total error count: {errors.Count()}");
+            Console.WriteLine($"Total error count: {_errors.Count()}");
+            Console.WriteLine($"Errors logged at: {logPath}");
+            LogErrors(logPath);
         }
 
-        static string[] GetEnglishDlls(string extractedVsixPath)
+        private static string[] GetEnglishDlls(string extractedVsixPath)
         {
             return Directory.GetFiles(extractedVsixPath, "NuGet.*.dll");
         }
 
-        static string[] GetTranslatedDlls(string extractedVsixPath, string englishDllName)
+        private static string[] GetTranslatedDlls(string extractedVsixPath, string englishDllName)
         {
             return Directory.GetFiles(extractedVsixPath, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
         }
 
-        static bool CompareAllStrings(string firstDll, string secondDll)
+        private static bool CompareAllStrings(string firstDll, string secondDll)
         {
             var firstAssembly = Assembly.LoadFrom(firstDll);
 
             var firstAssemblyResources = firstAssembly
                 .GetManifestResourceNames()
-                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase));
+                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) && !r.EndsWith("g.resources", StringComparison.OrdinalIgnoreCase));
 
             var secondAssembly = Assembly.LoadFrom(secondDll);
 
             var secondAssemblyResources = secondAssembly
                 .GetManifestResourceNames()
-                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase));
+                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) && !r.EndsWith("g.resources", StringComparison.OrdinalIgnoreCase));
 
             foreach(var firstAssemblyResource in firstAssemblyResources)
             {
@@ -99,16 +103,19 @@ namespace NuGetStringChecker
 
                while(firstResourceSetEnumerator.MoveNext())
                 {
-                    var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
-                    if (secondResource == null)
+                    if ((firstResourceSetEnumerator.Key is string) && (firstResourceSetEnumerator.Value is string))
                     {
-                        errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not found in {secondAssemblyResourceName} in dll {secondDll}");
-                        return false;
-                    }
-                    else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
-                    {
-                        errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not same as {secondAssemblyResourceName} in dll {secondDll} ");
-                        return false;
+                        var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
+                        if (secondResource == null)
+                        {
+                            _errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not found in {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}================================================================================================================");
+                            return false;
+                        }
+                        else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
+                        {
+                            _errors.Enqueue($"string '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' not same as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}=======================================================================================");
+                            return false;
+                        }
                     }
                 }
             }
@@ -116,14 +123,14 @@ namespace NuGetStringChecker
             return true;
         }
 
-        static bool CompareStrings(string firstString, string secondString)
+        private static bool CompareStrings(string firstString, string secondString)
         {
             var firstStringMetadata = GetStringMetadata(firstString);
             var secondStringMetadata = GetStringMetadata(secondString);
             return StringMetadataEquals(firstStringMetadata, secondStringMetadata);
         }
 
-        static Dictionary<string, int> GetStringMetadata(string str)
+        private static Dictionary<string, int> GetStringMetadata(string str)
         {
             var result = new Dictionary<string, int>();
             var current = new StringBuilder();
@@ -165,7 +172,7 @@ namespace NuGetStringChecker
             return result;
         }
 
-        static void AddResult(Dictionary<string, int> result, string placeHolderString)
+        private static void AddResult(Dictionary<string, int> result, string placeHolderString)
         {
             if (result.ContainsKey(placeHolderString))
             {
@@ -177,11 +184,27 @@ namespace NuGetStringChecker
             }
         }
 
-        static bool StringMetadataEquals(Dictionary<string, int> firstMetadata, Dictionary<string, int> secondMetadata)
+        private static bool StringMetadataEquals(Dictionary<string, int> firstMetadata, Dictionary<string, int> secondMetadata)
         {
             var unequalMetadata = firstMetadata
                 .Where(entry => !secondMetadata.ContainsKey(entry.Key) || secondMetadata[entry.Key] != entry.Value);
             return unequalMetadata.Count() == 0;
+        }
+
+        private static void LogErrors(string path)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            using (StreamWriter w = File.AppendText(path))
+            {
+                foreach(var error in _errors)
+                {
+                    w.WriteLine(error);
+                }
+            }
         }
     }
 }
