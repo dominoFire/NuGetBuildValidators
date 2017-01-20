@@ -14,8 +14,11 @@ namespace NuGetStringChecker
 {
     class Program
     {
-        private static ConcurrentQueue<string> _errors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _nonLocalizedStringErrors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
         private static int _numberOfThreads = 8;
+        private static string _logPath;
 
         public static void Main(string[] args)
         {
@@ -23,21 +26,26 @@ namespace NuGetStringChecker
             {
                 Console.WriteLine("Please enter 3 arguments - ");
                 Console.WriteLine("arg[0]: NuGet.Tools.Vsix path");
-                Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be already present, but Program should have write access to the location.");
-                Console.WriteLine("arg[2]: Path to the log File for writing errors. File need not be already present, but Program should have write access to the location.");
+                Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.");
+                Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
                 Console.WriteLine("Exiting...");
                 return;
             }
 
-            var vsixPath = args[0]; //@"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
-            var extractedVsixPath = args[1]; //@"F:\validation\NuGet.Tools";
-            var logPath = args[2]; // @"F:\validation\log.txt";
+            var vsixPath = args[0];
+            var extractedVsixPath = args[1];
+            _logPath = args[2];
 
             CleanExtractedFiles(extractedVsixPath);
-
             ExtractVsix(vsixPath, extractedVsixPath);
 
             var englishDlls = GetEnglishDlls(extractedVsixPath);
+
+            // For Testing
+            //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
+            //var extractedVsixPath = @"F:\validation\NuGet.Tools";
+            //_logPath = @"F:\validation";
+            //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
@@ -51,7 +59,8 @@ namespace NuGetStringChecker
                     {
                         if (!CompareAllStrings(englishDll, translatedDll))
                         {
-                            Console.WriteLine($@"Mismatch between {englishDll} and {translatedDll}.");
+                            // Produces extrememly verbose logs
+                            //Console.WriteLine($@"Mismatch between {englishDll} and {translatedDll}.");
                         }
                     }
                     catch(Exception e)
@@ -61,8 +70,9 @@ namespace NuGetStringChecker
                 }
             });
 
-            LogErrors(logPath);
-            CleanExtractedFiles(extractedVsixPath);
+            LogErrors();
+            // Files are cleared at the begining of each run
+            //CleanExtractedFiles(extractedVsixPath);
         }
 
         private static string[] GetEnglishDlls(string extractedVsixPath)
@@ -77,6 +87,7 @@ namespace NuGetStringChecker
 
         private static bool CompareAllStrings(string firstDll, string secondDll)
         {
+            var result = true;
             var firstAssembly = Assembly.LoadFrom(firstDll);
 
             var firstAssemblyResources = firstAssembly
@@ -112,17 +123,17 @@ namespace NuGetStringChecker
 
                while(firstResourceSetEnumerator.MoveNext())
                 {
-                    if ((firstResourceSetEnumerator.Key is string) && (firstResourceSetEnumerator.Value is string))
+                    if ((firstResourceSetEnumerator.Key is string) && !((firstResourceSetEnumerator.Key.ToString()).StartsWith(">>")) && (firstResourceSetEnumerator.Value is string))
                     {
                         var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
                         if (secondResource == null)
                         {
                             var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' "+
-                                $"NOT FOUND in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}"+
+                                $"MISSING in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}"+
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}"+
                                 "================================================================================================================";
-                            _errors.Enqueue(error);
-                            return false;
+                            _missingLocalizedErrors.Enqueue(error);
+                            result = false;
                         }
                         else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
                         {
@@ -131,14 +142,24 @@ namespace NuGetStringChecker
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}"+
                                 $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}"+
                                 "================================================================================================================";
-                            _errors.Enqueue(error);
-                            return false;
+                            _misMatcherrors.Enqueue(error);
+                            result = false;
+                        }
+                        else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
+                        {
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
+                                $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
+                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
+                                $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
+                                "================================================================================================================";
+                            _nonLocalizedStringErrors.Enqueue(error);
+                            result = false;
                         }
                     }
                 }
             }
 
-            return true;
+            return result;
         }
 
         private static bool CompareStrings(string firstString, string secondString)
@@ -209,10 +230,22 @@ namespace NuGetStringChecker
             return unequalMetadata.Count() == 0;
         }
 
-        private static void LogErrors(string path)
+        private static void LogErrors()
         {
-            Console.WriteLine($"Total error count: {_errors.Count()}");
+            LogErrors(_nonLocalizedStringErrors, "Not_Localized_Error", "These Strings are same as English strings");
+            LogErrors(_misMatcherrors, "Mismatch_Error", "These Strings do not contain the same number of place holders as the English strings");
+            LogErrors(_missingLocalizedErrors, "Missing_Error", "These Strings are missing in the localized resources");
+        }
+
+        private static void LogErrors(ConcurrentQueue<string>errors, string errorType, string errorDescription)
+        {
+            var path = Path.Combine(_logPath, errorType + ".txt");
+
+            Console.WriteLine("================================================================================================================");
+            Console.WriteLine($"Error Type: {errorType} - {errorDescription}");
+            Console.WriteLine($"Total error count: {errors.Count()}");
             Console.WriteLine($"Errors logged at: {path}");
+            Console.WriteLine("================================================================================================================");
 
             if (File.Exists(path))
             {
@@ -221,7 +254,7 @@ namespace NuGetStringChecker
 
             using (StreamWriter w = File.AppendText(path))
             {
-                foreach(var error in _errors)
+                foreach(var error in errors)
                 {
                     w.WriteLine(error);
                 }
