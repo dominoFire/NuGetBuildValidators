@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace NuGetStringChecker
 {
@@ -18,7 +19,6 @@ namespace NuGetStringChecker
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
         private static int _numberOfThreads = 8;
-        private static string _logPath;
 
         public static void Main(string[] args)
         {
@@ -34,18 +34,20 @@ namespace NuGetStringChecker
 
             var vsixPath = args[0];
             var extractedVsixPath = args[1];
-            _logPath = args[2];
+            var logPath = args[2];
 
             CleanExtractedFiles(extractedVsixPath);
             ExtractVsix(vsixPath, extractedVsixPath);
-
             var englishDlls = GetEnglishDlls(extractedVsixPath);
 
             // For Testing
             //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
-            //var extractedVsixPath = @"F:\validation\NuGet.Tools";
-            //_logPath = @"F:\validation";
+            //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
+            //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
+
+            //var lcx = XElement.Load(@"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Release\NuGetTools\15\cs\NuGet.Options.resources.dll.lcx");
+
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
@@ -70,7 +72,7 @@ namespace NuGetStringChecker
                 }
             });
 
-            LogErrors();
+            LogErrors(logPath);
             // Files are cleared at the begining of each run
             //CleanExtractedFiles(extractedVsixPath);
         }
@@ -147,6 +149,7 @@ namespace NuGetStringChecker
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
                         {
+                            // TODO - Cross validate with LCX file
                             var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
                                 $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
@@ -230,16 +233,27 @@ namespace NuGetStringChecker
             return unequalMetadata.Count() == 0;
         }
 
-        private static void LogErrors()
+        private static void LogErrors(string logPath)
         {
-            LogErrors(_nonLocalizedStringErrors, "Not_Localized_Error", "These Strings are same as English strings");
-            LogErrors(_misMatcherrors, "Mismatch_Error", "These Strings do not contain the same number of place holders as the English strings");
-            LogErrors(_missingLocalizedErrors, "Missing_Error", "These Strings are missing in the localized resources");
+            LogErrors(logPath, 
+                _nonLocalizedStringErrors, 
+                "Not_Localized_Error", 
+                "These Strings are same as English strings");
+
+            LogErrors(logPath, 
+                _misMatcherrors, 
+                "Mismatch_Error", 
+                "These Strings do not contain the same number of place holders as the English strings");
+
+            LogErrors(logPath, 
+                _missingLocalizedErrors, 
+                "Missing_Error", 
+                "These Strings are missing in the localized resources");
         }
 
-        private static void LogErrors(ConcurrentQueue<string>errors, string errorType, string errorDescription)
+        private static void LogErrors(string logPath, ConcurrentQueue<string>errors, string errorType, string errorDescription)
         {
-            var path = Path.Combine(_logPath, errorType + ".txt");
+            var path = Path.Combine(logPath, errorType + ".txt");
 
             Console.WriteLine("================================================================================================================");
             Console.WriteLine($"Error Type: {errorType} - {errorDescription}");
