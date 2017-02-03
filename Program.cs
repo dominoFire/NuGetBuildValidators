@@ -18,6 +18,8 @@ namespace NuGetStringChecker
         private static ConcurrentQueue<string> _nonLocalizedStringErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
+        private static Dictionary<string, Dictionary<string, IEnumerable<string>>> _lockedStrings = new ConcurrentQueue<string>();
         private static int _numberOfThreads = 8;
 
         public static void Main(string[] args)
@@ -29,24 +31,23 @@ namespace NuGetStringChecker
                 Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.");
                 Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
                 Console.WriteLine("Exiting...");
-                return;
+                //return;
             }
 
             var vsixPath = args[0];
             var extractedVsixPath = args[1];
             var logPath = args[2];
 
-            CleanExtractedFiles(extractedVsixPath);
-            ExtractVsix(vsixPath, extractedVsixPath);
+            //CleanExtractedFiles(extractedVsixPath);
+            //ExtractVsix(vsixPath, extractedVsixPath);
             var englishDlls = GetEnglishDlls(extractedVsixPath);
+            var lciCommentsDirPath = @"E:\NuGet TFS\Main\localize\comments\15";
 
             // For Testing
             //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
             //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
-
-            //var lcx = XElement.Load(@"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Release\NuGetTools\15\cs\NuGet.Options.resources.dll.lcx");
 
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
@@ -59,11 +60,7 @@ namespace NuGetStringChecker
                 {
                     try
                     {
-                        if (!CompareAllStrings(englishDll, translatedDll))
-                        {
-                            // Produces extrememly verbose logs
-                            //Console.WriteLine($@"Mismatch between {englishDll} and {translatedDll}.");
-                        }
+                        CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
                     }
                     catch(Exception e)
                     {
@@ -87,8 +84,14 @@ namespace NuGetStringChecker
             return Directory.GetFiles(extractedVsixPath, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
         }
 
-        private static bool CompareAllStrings(string firstDll, string secondDll)
+        private static bool CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
         {
+            var lciFilePath = Path.Combine(lciCommentDirPath, Path.GetFileName(secondDll) + ".lci");
+            XElement lciFile = null;
+            if (File.Exists(lciFilePath))
+            {
+                lciFile = XElement.Load(lciFilePath);
+            }
             var result = true;
             var firstAssembly = Assembly.LoadFrom(firstDll);
 
@@ -149,14 +152,54 @@ namespace NuGetStringChecker
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
                         {
-                            // TODO - Cross validate with LCX file
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
-                                $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
-                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
-                                $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
-                                "================================================================================================================";
-                            _nonLocalizedStringErrors.Enqueue(error);
-                            result = false;
+                            var isLocked = false;
+
+                            var lciEntries = lciFile
+                                ?.Descendants()
+                                .Where(d => d.Name.LocalName.Equals("Item", StringComparison.OrdinalIgnoreCase))
+                                .Where(d => d.Attribute(XName.Get("ItemId")).Value.Equals(";" + firstResourceSetEnumerator.Key, StringComparison.OrdinalIgnoreCase));
+
+                            if (lciEntries?.Any() == true)
+                            {
+                                var lciEntry = lciEntries.First();
+                                var valueData = lciEntry
+                                    .Descendants()
+                                    .Where(d => d.Name.LocalName.Equals("val", StringComparison.OrdinalIgnoreCase));
+                                var valueString = ((XCData)valueData.First().FirstNode).Value;
+
+                                var cmtData = lciEntry.Descendants()
+                                    .Where(d => d.Name.LocalName.Equals("cmt", StringComparison.OrdinalIgnoreCase));
+                                var cmtString = ((XCData)cmtData.First().FirstNode).Value;
+
+                                if (cmtString.Equals("{Locked}", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isLocked = true;
+                                }
+                                else if(cmtString.Equals("{Locked=\""+valueString+"\"}", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isLocked = true;
+                                }
+
+                                if (cmtString.Contains("Locked"))
+                                {
+                                    var lockedString = $"Dll: {firstAssemblyResource}{Environment.NewLine}" +
+                                            $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
+                                            $"lcx:{cmtString}{Environment.NewLine}" +
+                                           "================================================================================================================";
+                                    _lockedStrings.Enqueue(lockedString);
+                                }
+                            }
+
+                            if (!isLocked)
+                            {
+                                var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
+                                    $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
+                                    $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
+                                    $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
+                                    "================================================================================================================";
+                                _nonLocalizedStringErrors.Enqueue(error);
+                                result = false;
+                            }
                         }
                     }
                 }
@@ -248,6 +291,11 @@ namespace NuGetStringChecker
             LogErrors(logPath, 
                 _missingLocalizedErrors, 
                 "Missing_Error", 
+                "These Strings are missing in the localized resources");
+
+            LogErrors(logPath,
+                _lockedStrings,
+                "Locked_Strings",
                 "These Strings are missing in the localized resources");
         }
 
