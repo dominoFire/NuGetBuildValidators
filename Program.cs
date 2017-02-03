@@ -19,7 +19,8 @@ namespace NuGetStringChecker
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
-        private static Dictionary<string, Dictionary<string, IEnumerable<string>>> _lockedStrings = new ConcurrentQueue<string>();
+        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
+        private static object _packageCollectionLock = new object();
         private static int _numberOfThreads = 8;
 
         public static void Main(string[] args)
@@ -31,7 +32,7 @@ namespace NuGetStringChecker
                 Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.");
                 Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
                 Console.WriteLine("Exiting...");
-                //return;
+                return;
             }
 
             var vsixPath = args[0];
@@ -130,76 +131,82 @@ namespace NuGetStringChecker
                 {
                     if ((firstResourceSetEnumerator.Key is string) && !((firstResourceSetEnumerator.Key.ToString()).StartsWith(">>")) && (firstResourceSetEnumerator.Value is string))
                     {
+
+                        Uri uriResult;
+                        if ((Uri.TryCreate((firstResourceSetEnumerator.Value as string), UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp)) ||
+                            (firstResourceSetEnumerator.Value as string).All(c => !char.IsLetter(c)))
+                        {
+                            Console.WriteLine($"{firstResourceSetEnumerator.Key as string}: {(firstResourceSetEnumerator.Value as string)}");
+                            continue;
+                        }
+
+                        var lciEntries = lciFile
+                            ?.Descendants()
+                            .Where(d => d.Name.LocalName.Equals("Item", StringComparison.OrdinalIgnoreCase))
+                            .Where(d => d.Attribute(XName.Get("ItemId")).Value.Equals(";" + firstResourceSetEnumerator.Key, StringComparison.OrdinalIgnoreCase));
+
+                        if (lciEntries?.Any() == true)
+                        {
+                            var lciEntry = lciEntries.First();
+                            var valueData = lciEntry
+                                .Descendants()
+                                .Where(d => d.Name.LocalName.Equals("val", StringComparison.OrdinalIgnoreCase));
+                            var valueString = ((XCData)valueData.First().FirstNode).Value;
+
+                            var cmtData = lciEntry.Descendants()
+                                .Where(d => d.Name.LocalName.Equals("cmt", StringComparison.OrdinalIgnoreCase));
+                            var cmtString = ((XCData)cmtData.First().FirstNode).Value;
+
+                            if (cmtString.Contains("Locked"))
+                            {
+                                var lockedString = $"Dll: {firstAssemblyResource}{Environment.NewLine}" +
+                                        $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
+                                        $"lcx:{cmtString}{Environment.NewLine}" +
+                                       "================================================================================================================";
+                                _lockedStrings.Enqueue(lockedString);
+                            }
+
+                            if (cmtString.Equals("{Locked}", StringComparison.OrdinalIgnoreCase) ||
+                                cmtString.Equals("{Locked=\"" + valueString + "\"}", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+                        }
+
                         var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
                         if (secondResource == null)
                         {
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' "+
-                                $"MISSING in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}"+
-                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}"+
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
+                                $"MISSING in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}" +
+                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}" +
                                 "================================================================================================================";
                             _missingLocalizedErrors.Enqueue(error);
                             result = false;
                         }
                         else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
                         {
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' "+
-                                $"NOT SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}"+
-                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}"+
-                                $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}"+
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
+                                $"NOT SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
+                                $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
+                                $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
                                 "================================================================================================================";
                             _misMatcherrors.Enqueue(error);
                             result = false;
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
                         {
-                            var isLocked = false;
-
-                            var lciEntries = lciFile
-                                ?.Descendants()
-                                .Where(d => d.Name.LocalName.Equals("Item", StringComparison.OrdinalIgnoreCase))
-                                .Where(d => d.Attribute(XName.Get("ItemId")).Value.Equals(";" + firstResourceSetEnumerator.Key, StringComparison.OrdinalIgnoreCase));
-
-                            if (lciEntries?.Any() == true)
-                            {
-                                var lciEntry = lciEntries.First();
-                                var valueData = lciEntry
-                                    .Descendants()
-                                    .Where(d => d.Name.LocalName.Equals("val", StringComparison.OrdinalIgnoreCase));
-                                var valueString = ((XCData)valueData.First().FirstNode).Value;
-
-                                var cmtData = lciEntry.Descendants()
-                                    .Where(d => d.Name.LocalName.Equals("cmt", StringComparison.OrdinalIgnoreCase));
-                                var cmtString = ((XCData)cmtData.First().FirstNode).Value;
-
-                                if (cmtString.Equals("{Locked}", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    isLocked = true;
-                                }
-                                else if(cmtString.Equals("{Locked=\""+valueString+"\"}", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    isLocked = true;
-                                }
-
-                                if (cmtString.Contains("Locked"))
-                                {
-                                    var lockedString = $"Dll: {firstAssemblyResource}{Environment.NewLine}" +
-                                            $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
-                                            $"lcx:{cmtString}{Environment.NewLine}" +
-                                           "================================================================================================================";
-                                    _lockedStrings.Enqueue(lockedString);
-                                }
-                            }
-
-                            if (!isLocked)
-                            {
-                                var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
                                     $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
                                     $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
                                     $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
                                     "================================================================================================================";
-                                _nonLocalizedStringErrors.Enqueue(error);
-                                result = false;
-                            }
+                            _nonLocalizedStringErrors.Enqueue(error);
+                            AddToCollection(_nonLocalizedStringErrorsDeduped,
+                                Path.GetFileName(firstDll),
+                                firstResourceSetEnumerator.Key as string,
+                                Directory.GetParent(secondDll).Name);
+
+                            result = false;
                         }
                     }
                 }
@@ -275,31 +282,62 @@ namespace NuGetStringChecker
                 .Where(entry => !secondMetadata.ContainsKey(entry.Key) || secondMetadata[entry.Key] != entry.Value);
             return unequalMetadata.Count() == 0;
         }
+        
+        private static void AddToCollection(Dictionary<string, Dictionary<string, List<string>>> collection, 
+            string dllName, string resourceName, string language)
+        {
+            lock (_packageCollectionLock)
+            {
+                if (collection.ContainsKey(dllName))
+                {
+                    if (collection[dllName].ContainsKey(resourceName))
+                    {
+                        collection[dllName][resourceName].Add(language);
+                    }
+                    else
+                    {
+                        collection[dllName][resourceName] = new List<string> { language };
+                    }
+                }
+                else
+                {
+                    collection[dllName] = new Dictionary<string, List<string>> { { resourceName, new List<string> { language.ToLower() } } };
+                }
+            }
+        }
 
         private static void LogErrors(string logPath)
         {
             LogErrors(logPath, 
                 _nonLocalizedStringErrors, 
-                "Not_Localized_Error", 
+                "Not_Localized_Strings", 
                 "These Strings are same as English strings");
 
             LogErrors(logPath, 
                 _misMatcherrors, 
-                "Mismatch_Error", 
+                "Mismatch_Strings", 
                 "These Strings do not contain the same number of place holders as the English strings");
 
             LogErrors(logPath, 
                 _missingLocalizedErrors, 
-                "Missing_Error", 
+                "Missing_Strings", 
                 "These Strings are missing in the localized resources");
 
             LogErrors(logPath,
                 _lockedStrings,
                 "Locked_Strings",
                 "These Strings are missing in the localized resources");
+
+            LogCollectionToXslt(logPath,
+                _nonLocalizedStringErrorsDeduped,
+                "Not_Localized_Strings_Deduped",
+                "These Strings are same as English strings");
         }
 
-        private static void LogErrors(string logPath, ConcurrentQueue<string>errors, string errorType, string errorDescription)
+        private static void LogErrors(string logPath, 
+            ConcurrentQueue<string>errors, 
+            string errorType, 
+            string errorDescription)
         {
             var path = Path.Combine(logPath, errorType + ".txt");
 
@@ -339,6 +377,97 @@ namespace NuGetStringChecker
             ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);
 
             Console.WriteLine($"Done Extracting...");
+        }
+
+        private static void LogCollectionToXslt(string logPath, 
+            Dictionary<string, Dictionary<string, List<string>>> collection, 
+            string logFileName, 
+            string logDescription)
+        {
+            var path = Path.Combine(logPath, logFileName + ".csv");
+
+            Console.WriteLine("================================================================================================================");
+            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+            Console.WriteLine($"Errors logged at: {path}");
+            Console.WriteLine("================================================================================================================");
+
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+            using (StreamWriter w = File.AppendText(path))
+            {
+                w.WriteLine("Dll Name, Resource Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
+                foreach (var dll in collection.Keys)
+                {
+                    foreach (var resource in collection[dll].Keys)
+                    {
+                        var line = new StringBuilder();
+                        line.Append(dll);
+                        line.Append(",");
+                        line.Append(resource);
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("cs") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("de") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("es") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("fr") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("it") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("ja") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("ko") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("pl") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("pt-br") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("ru") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("tr") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("zh-hans") ? "Error" : "");
+                        line.Append(",");
+                        line.Append(collection[dll][resource].Contains("zh-hant") ? "Error" : "");
+                        line.Append(",");
+
+                        w.WriteLine(line.ToString());
+                    }
+                }
+            }
+        }
+        private static void LogCollectionToXsltSimple(string logPath,
+            Dictionary<string, Dictionary<string, List<string>>> collection,
+            string logFileName,
+            string logDescription)
+        {
+            var path = Path.Combine(logPath, logFileName + "_Simple.csv");
+
+            Console.WriteLine("================================================================================================================");
+            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+            Console.WriteLine($"Errors logged at: {path}");
+            Console.WriteLine("================================================================================================================");
+
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+            using (StreamWriter w = File.AppendText(path))
+            {
+                foreach (var dll in collection.Keys)
+                {
+                    foreach (var resource in collection[dll].Keys)
+                    {
+                        foreach (var langauge in collection[dll][resource])
+                        {
+                            w.WriteLine(string.Concat(dll, ",", resource, ",", langauge));
+                        }
+                    }
+                }
+            }
         }
     }
 }
