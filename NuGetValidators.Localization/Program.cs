@@ -39,8 +39,8 @@ namespace NuGetStringChecker
             var extractedVsixPath = args[1];
             var logPath = args[2];
 
-            //CleanExtractedFiles(extractedVsixPath);
-            //ExtractVsix(vsixPath, extractedVsixPath);
+            CleanExtractedFiles(extractedVsixPath);
+            ExtractVsix(vsixPath, extractedVsixPath);
 
 
             // For Testing
