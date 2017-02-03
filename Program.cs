@@ -41,14 +41,16 @@ namespace NuGetStringChecker
 
             //CleanExtractedFiles(extractedVsixPath);
             //ExtractVsix(vsixPath, extractedVsixPath);
-            var englishDlls = GetEnglishDlls(extractedVsixPath);
-            var lciCommentsDirPath = @"E:\NuGet TFS\Main\localize\comments\15";
+
 
             // For Testing
             //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
             //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
+
+            var englishDlls = GetEnglishDlls(extractedVsixPath);
+            var lciCommentsDirPath = @"E:\NuGet TFS\Main\localize\comments\15";
 
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
@@ -136,7 +138,6 @@ namespace NuGetStringChecker
                         if ((Uri.TryCreate((firstResourceSetEnumerator.Value as string), UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp)) ||
                             (firstResourceSetEnumerator.Value as string).All(c => !char.IsLetter(c)))
                         {
-                            Console.WriteLine($"{firstResourceSetEnumerator.Key as string}: {(firstResourceSetEnumerator.Value as string)}");
                             continue;
                         }
 
@@ -292,11 +293,11 @@ namespace NuGetStringChecker
                 {
                     if (collection[dllName].ContainsKey(resourceName))
                     {
-                        collection[dllName][resourceName].Add(language);
+                        collection[dllName][resourceName].Add(language.ToLower());
                     }
                     else
                     {
-                        collection[dllName][resourceName] = new List<string> { language };
+                        collection[dllName][resourceName] = new List<string> { language.ToLower() };
                     }
                 }
                 else
