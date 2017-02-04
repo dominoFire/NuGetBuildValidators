@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26020.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetValidators.Localization", "NuGetValidators.Localization.csproj", "{4C895557-98E1-49EA-AA20-9E770EA2D46B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetValidators.Localization", "NuGetValidators.Localization\NuGetValidators.Localization.csproj", "{4C895557-98E1-49EA-AA20-9E770EA2D46B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
