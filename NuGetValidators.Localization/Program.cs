@@ -312,27 +312,27 @@ namespace NuGetStringChecker
             LogErrors(logPath, 
                 _nonLocalizedStringErrors, 
                 "Not_Localized_Strings", 
-                "These Strings are same as English strings");
+                "These Strings are same as English strings.");
 
             LogErrors(logPath, 
                 _misMatcherrors, 
                 "Mismatch_Strings", 
-                "These Strings do not contain the same number of place holders as the English strings");
+                "These Strings do not contain the same number of place holders as the English strings.");
 
             LogErrors(logPath, 
                 _missingLocalizedErrors, 
                 "Missing_Strings", 
-                "These Strings are missing in the localized resources");
+                "These Strings are missing in the localized resources.");
 
             LogErrors(logPath,
                 _lockedStrings,
                 "Locked_Strings",
-                "These Strings are missing in the localized resources");
+                "These are wholly locked or contain a locked sub string.");
 
             LogCollectionToXslt(logPath,
                 _nonLocalizedStringErrorsDeduped,
                 "Not_Localized_Strings_Deduped",
-                "These Strings are same as English strings");
+                "These Strings are same as English strings.");
         }
 
         private static void LogErrors(string logPath, 
