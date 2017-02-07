@@ -20,8 +20,11 @@ namespace NuGetStringChecker
         private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
         private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
-        private static object _packageCollectionLock = new object();
+        private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
+        private static object _packageStringCollectionLock = new object();
+        private static object _packageDllCollectionLock = new object();
         private static int _numberOfThreads = 8;
+        private static int _numberOfTranslatedLanguages = 12;
 
         public static void Main(string[] args)
         {
@@ -59,10 +62,18 @@ namespace NuGetStringChecker
                 Console.WriteLine($"Validating strings for ${englishDll}");
                 var translatedDlls = GetTranslatedDlls(extractedVsixPath, Path.GetFileNameWithoutExtension(englishDll));
 
+                // Add english dll the collection to log dlls that are not yet translated
+                AddToCollection(_localizedDlls,
+                    Path.GetFileName(englishDll));
+
                 foreach (var translatedDll in translatedDlls)
                 {
                     try
                     {
+                        // Add translated dlls into a collection to filter out localized dlls
+                        AddToCollection(_localizedDlls,
+                            Path.GetFileName(englishDll),
+                            Directory.GetParent(translatedDll).Name);
                         CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
                     }
                     catch(Exception e)
@@ -73,7 +84,7 @@ namespace NuGetStringChecker
             });
 
             LogErrors(logPath);
-            // Files are cleared at the begining of each run
+            // No longer clearing files at the end. Files are cleared at the begining of each run
             //CleanExtractedFiles(extractedVsixPath);
         }
 
@@ -287,7 +298,7 @@ namespace NuGetStringChecker
         private static void AddToCollection(Dictionary<string, Dictionary<string, List<string>>> collection, 
             string dllName, string resourceName, string language)
         {
-            lock (_packageCollectionLock)
+            lock (_packageStringCollectionLock)
             {
                 if (collection.ContainsKey(dllName))
                 {
@@ -307,32 +318,68 @@ namespace NuGetStringChecker
             }
         }
 
+        private static void AddToCollection(Dictionary<string, List<string>> collection, 
+            string dllName)
+        {
+            lock (_packageDllCollectionLock)
+            {
+                if (!collection.ContainsKey(dllName))
+                {
+                    collection[dllName] = new List<string>();
+                }
+            }
+        }
+
+        private static void AddToCollection(Dictionary<string, List<string>> collection, 
+            string dllName, string language)
+        {
+            lock (_packageDllCollectionLock)
+            {
+                if (collection.ContainsKey(dllName))
+                {
+                    if (!collection[dllName].Contains(language))
+                    {
+                        collection[dllName].Add(language.ToLower());
+                    }
+                }
+                else
+                {
+                    collection[dllName] = new List<string> { language.ToLower() };
+                }
+            }
+        }
+
         private static void LogErrors(string logPath)
         {
             LogErrors(logPath, 
                 _nonLocalizedStringErrors, 
                 "Not_Localized_Strings", 
-                "These Strings are same as English strings");
+                "These Strings are same as English strings.");
 
             LogErrors(logPath, 
                 _misMatcherrors, 
                 "Mismatch_Strings", 
-                "These Strings do not contain the same number of place holders as the English strings");
+                "These Strings do not contain the same number of place holders as the English strings.");
 
             LogErrors(logPath, 
                 _missingLocalizedErrors, 
                 "Missing_Strings", 
-                "These Strings are missing in the localized resources");
+                "These Strings are missing in the localized resources.");
 
             LogErrors(logPath,
                 _lockedStrings,
                 "Locked_Strings",
-                "These Strings are missing in the localized resources");
+                "These Strings are missing in the localized resources.");
 
             LogCollectionToXslt(logPath,
                 _nonLocalizedStringErrorsDeduped,
                 "Not_Localized_Strings_Deduped",
-                "These Strings are same as English strings");
+                "These Strings are same as English strings.");
+
+            LogCollectionToXslt(logPath,
+                _localizedDlls,
+                "Not_Localized_Dlls_Deduped",
+                "These Dlls have not been localized.");
         }
 
         private static void LogErrors(string logPath, 
@@ -440,6 +487,64 @@ namespace NuGetStringChecker
                 }
             }
         }
+
+        private static void LogCollectionToXslt(string logPath, 
+           Dictionary<string, List<string>> collection, 
+            string logFileName,
+            string logDescription)
+        {
+            var path = Path.Combine(logPath, logFileName + ".csv");
+
+            Console.WriteLine("================================================================================================================");
+            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+            Console.WriteLine($"Errors logged at: {path}");
+            Console.WriteLine("================================================================================================================");
+
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            using (StreamWriter w = File.AppendText(path))
+            {
+                w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
+                foreach (var dll in collection.Keys)
+                {
+                    var line = new StringBuilder();
+                    line.Append(dll);
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("cs") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("de") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("es") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("fr") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("it") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("ja") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("ko") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("pl") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("pt-br") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("ru") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("tr") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("zh-hans") ? "Error" : "");
+                    line.Append(",");
+                    line.Append(!collection[dll].Contains("zh-hant") ? "Error" : "");
+                    line.Append(",");
+
+                    w.WriteLine(line.ToString());
+                }
+            }
+        }
+
         private static void LogCollectionToXsltSimple(string logPath,
             Dictionary<string, Dictionary<string, List<string>>> collection,
             string logFileName,
