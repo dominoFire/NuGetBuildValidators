@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,7 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace NuGetStringChecker
+namespace NuGetValidators
 {
     class Program
     {
@@ -23,8 +24,9 @@ namespace NuGetStringChecker
         private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
         private static object _packageStringCollectionLock = new object();
         private static object _packageDllCollectionLock = new object();
-        private static int _numberOfThreads = 8;
-        private static int _numberOfTranslatedLanguages = 12;
+
+        private static int _numberOfThreads = 1;
+        private static HashSet<string> _languages = new HashSet<string> { "cs", "de", "es", "fr", "it", "ja", "ko", "pl", "pt-br", "ru", "tr", "zh-hans", "zh-hant" };
 
         public static void Main(string[] args)
         {
@@ -59,27 +61,34 @@ namespace NuGetStringChecker
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
             {
-                Console.WriteLine($"Validating strings for ${englishDll}");
-                var translatedDlls = GetTranslatedDlls(extractedVsixPath, Path.GetFileNameWithoutExtension(englishDll));
-
-                // Add english dll the collection to log dlls that are not yet translated
-                AddToCollection(_localizedDlls,
-                    Path.GetFileName(englishDll));
-
-                foreach (var translatedDll in translatedDlls)
+                if (DoesDllContainResourceStrings(englishDll))
                 {
-                    try
+                    Console.WriteLine($"Validating resource strings for ${englishDll}.");
+                    var translatedDlls = GetTranslatedDlls(extractedVsixPath, Path.GetFileNameWithoutExtension(englishDll));
+
+                    // Add translated dlls into a collection to filter out localized dlls
+                    AddToCollection(_localizedDlls,
+                        Path.GetFileName(englishDll));
+
+                    foreach (var translatedDll in translatedDlls)
                     {
-                        // Add translated dlls into a collection to filter out localized dlls
-                        AddToCollection(_localizedDlls,
-                            Path.GetFileName(englishDll),
-                            Directory.GetParent(translatedDll).Name);
-                        CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
+                        try
+                        {
+                            // Add translated dlls into a collection to filter out localized dlls
+                            AddToCollection(_localizedDlls,
+                                Path.GetFileName(englishDll),
+                                Directory.GetParent(translatedDll).Name);
+                            CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                        }
                     }
-                    catch(Exception e)
-                    {
-                        Console.WriteLine(e);
-                    }
+                }
+                else
+                {
+                    Console.WriteLine($"No resource strings found in {englishDll}");
                 }
             });
 
@@ -106,72 +115,40 @@ namespace NuGetStringChecker
             {
                 lciFile = XElement.Load(lciFilePath);
             }
-            var result = true;
-            var firstAssembly = Assembly.LoadFrom(firstDll);
 
-            var firstAssemblyResources = firstAssembly
-                .GetManifestResourceNames()
-                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) && !r.EndsWith("g.resources", StringComparison.OrdinalIgnoreCase));
+            var result = true;
+
+            var firstAssembly = Assembly.LoadFrom(firstDll);
+            var firstAssemblyResourceFullNames = GetResourceFullNamesFromDll(firstAssembly);
 
             var secondAssembly = Assembly.LoadFrom(secondDll);
+            var secondAssemblyResourceFullNames = GetResourceFullNamesFromDll(secondAssembly);
 
-            var secondAssemblyResources = secondAssembly
-                .GetManifestResourceNames()
-                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) && !r.EndsWith("g.resources", StringComparison.OrdinalIgnoreCase));
-
-            foreach(var firstAssemblyResource in firstAssemblyResources)
+            foreach (var firstAssemblyResourceFullName in firstAssemblyResourceFullNames)
             {
 
-                var firstAssemblyResourceName = firstAssemblyResource
-                    .Substring(0, firstAssemblyResource.LastIndexOf(".resource", StringComparison.OrdinalIgnoreCase));
+                var firstResourceSetEnumerator = GetResourceEnumeratorFromAssembly(firstAssemblyResourceFullName, firstAssembly);
 
-                var secondAssemblyResource = secondAssemblyResources
-                    .First(r => r.StartsWith(firstAssemblyResourceName));
-
-                var secondAssemblyResourceName = secondAssemblyResource
-                    .Substring(0, secondAssemblyResource.LastIndexOf(".resource", StringComparison.OrdinalIgnoreCase));
-
-
-                var firstResourceManager = new ResourceManager(firstAssemblyResourceName, firstAssembly);
-                var secondResourceManager = new ResourceManager(secondAssemblyResourceName, secondAssembly);
-
-                var firstResourceSet = firstResourceManager.GetResourceSet(CultureInfo.InvariantCulture, true, false);
-                var secondResourceSet = secondResourceManager.GetResourceSet(CultureInfo.InvariantCulture, true, false);
-
-                var firstResourceSetEnumerator = firstResourceSet.GetEnumerator();
-
-               while(firstResourceSetEnumerator.MoveNext())
+                while (firstResourceSetEnumerator.MoveNext())
                 {
-                    if ((firstResourceSetEnumerator.Key is string) && !((firstResourceSetEnumerator.Key.ToString()).StartsWith(">>")) && (firstResourceSetEnumerator.Value is string))
+                    if (IsResourceAValidString(firstResourceSetEnumerator.Key, firstResourceSetEnumerator.Value))
                     {
-
-                        Uri uriResult;
-                        if ((Uri.TryCreate((firstResourceSetEnumerator.Value as string), UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp)) ||
-                            (firstResourceSetEnumerator.Value as string).All(c => !char.IsLetter(c)))
+                        if (IsResourceStringURIOrNonAlphabetical(firstResourceSetEnumerator.Key as string, firstResourceSetEnumerator))
                         {
                             continue;
                         }
 
-                        var lciEntries = lciFile
-                            ?.Descendants()
-                            .Where(d => d.Name.LocalName.Equals("Item", StringComparison.OrdinalIgnoreCase))
-                            .Where(d => d.Attribute(XName.Get("ItemId")).Value.Equals(";" + firstResourceSetEnumerator.Key, StringComparison.OrdinalIgnoreCase));
+                        var lciEntries = GetLciEntries(lciFile, firstResourceSetEnumerator.Key as string);
 
                         if (lciEntries?.Any() == true)
                         {
-                            var lciEntry = lciEntries.First();
-                            var valueData = lciEntry
-                                .Descendants()
-                                .Where(d => d.Name.LocalName.Equals("val", StringComparison.OrdinalIgnoreCase));
-                            var valueString = ((XCData)valueData.First().FirstNode).Value;
-
-                            var cmtData = lciEntry.Descendants()
-                                .Where(d => d.Name.LocalName.Equals("cmt", StringComparison.OrdinalIgnoreCase));
-                            var cmtString = ((XCData)cmtData.First().FirstNode).Value;
+                            var lciCommentAndValueTuple = GetLciCommentAndValueString(lciEntries);
+                            var cmtString = lciCommentAndValueTuple.Item1;
+                            var valueString = lciCommentAndValueTuple.Item2;
 
                             if (cmtString.Contains("Locked"))
                             {
-                                var lockedString = $"Dll: {firstAssemblyResource}{Environment.NewLine}" +
+                                var lockedString = $"Dll: {firstAssemblyResourceFullName}{Environment.NewLine}" +
                                         $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
                                         $"lcx:{cmtString}{Environment.NewLine}" +
                                        "================================================================================================================";
@@ -185,11 +162,17 @@ namespace NuGetStringChecker
                             }
                         }
 
-                        var secondResource = secondResourceSet.GetString(firstResourceSetEnumerator.Key as string);
+                        var secodResourceFullName = secondAssemblyResourceFullNames
+                            .First(r => r.StartsWith(GetResourceNameFromFullName(firstAssemblyResourceFullName)));
+
+                        var secondResource = GetResourceFromAssembly(secodResourceFullName, 
+                            firstResourceSetEnumerator.Key as string, 
+                            secondAssembly);
+
                         if (secondResource == null)
                         {
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
-                                $"MISSING in '{secondAssemblyResourceName}' in dll '{secondDll}'{Environment.NewLine}" +
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResourceFullName}' " +
+                                $"MISSING in dll '{secondDll}'{Environment.NewLine}" +
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}'{Environment.NewLine}" +
                                 "================================================================================================================";
                             _missingLocalizedErrors.Enqueue(error);
@@ -197,8 +180,8 @@ namespace NuGetStringChecker
                         }
                         else if (!CompareStrings(firstResourceSetEnumerator.Value as string, secondResource))
                         {
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
-                                $"NOT SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResourceFullName}' " +
+                                $"NOT SAME in dll '{secondDll}'{Environment.NewLine}" +
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
                                 $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
                                 "================================================================================================================";
@@ -207,8 +190,8 @@ namespace NuGetStringChecker
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
                         {
-                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResource}' " +
-                                    $"EXACTLY SAME as {secondAssemblyResourceName} in dll {secondDll}{Environment.NewLine}" +
+                            var error = $"Resource '{firstResourceSetEnumerator.Key}' from english resource set '{firstAssemblyResourceFullName}' " +
+                                    $"EXACTLY SAME in dll '{secondDll}'{Environment.NewLine}" +
                                     $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
                                     $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
                                     "================================================================================================================";
@@ -225,6 +208,99 @@ namespace NuGetStringChecker
             }
 
             return result;
+        }
+
+        private static bool IsResourceStringURIOrNonAlphabetical(string resourceKey, IDictionaryEnumerator resourceSetEnumerator)
+        {
+            Uri uriResult;
+            if ((Uri.TryCreate((resourceSetEnumerator.Value as string), UriKind.Absolute, out uriResult) &&
+                (uriResult.Scheme == Uri.UriSchemeHttp)) ||
+                (resourceSetEnumerator.Value as string).All(c => !char.IsLetter(c)))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private static bool IsResourceAValidString(object resourceKey, object resourceValue)
+        {
+            if ((resourceKey is string) &&
+                !((resourceKey.ToString()).StartsWith(">>")) &&
+                (resourceValue is string))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private static IEnumerable<XElement> GetLciEntries(XElement lciFile, string resourceStringKey)
+        {
+            return lciFile
+                ?.Descendants()
+                .Where(d => d.Name.LocalName.Equals("Item", StringComparison.OrdinalIgnoreCase))
+                .Where(d => d.Attribute(XName.Get("ItemId")).Value.Equals(";" + resourceStringKey, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static Tuple<string, string> GetLciCommentAndValueString(IEnumerable<XElement> lciEntries)
+        {
+            var lciEntry = lciEntries.First();
+            var valueData = lciEntry
+                .Descendants()
+                .Where(d => d.Name.LocalName.Equals("val", StringComparison.OrdinalIgnoreCase));
+            var valueString = ((XCData)valueData.First().FirstNode).Value;
+
+            var cmtData = lciEntry.Descendants()
+                .Where(d => d.Name.LocalName.Equals("cmt", StringComparison.OrdinalIgnoreCase));
+            var cmtString = ((XCData)cmtData.First().FirstNode).Value;
+
+            return new Tuple<string, string>(cmtString, valueString);
+        }
+
+        private static bool DoesDllContainResourceStrings(string dll)
+        {
+            var assembly = Assembly.LoadFrom(dll);
+            return GetResourceFullNamesFromDll(assembly).Any();
+        }
+
+        private static IEnumerable<string> GetResourceFullNamesFromDll(Assembly assembly)
+        {
+            return assembly
+                .GetManifestResourceNames()
+                .Where(r => r.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) && 
+                           !r.EndsWith("g.resources", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IDictionaryEnumerator GetResourceEnumeratorFromAssembly(string resourceFullName, Assembly assembly)
+        {
+            var assemblyResourceName = resourceFullName
+                .Substring(0, resourceFullName.LastIndexOf(".resource", StringComparison.OrdinalIgnoreCase));
+
+            var resourceManager = new ResourceManager(assemblyResourceName, assembly);
+
+            var resourceSet = resourceManager.GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false);
+
+            return resourceSet.GetEnumerator();
+        }
+
+        private static ResourceSet GetResourceSetFromAssembly(string resourceFullName, Assembly assembly)
+        {
+            var assemblyResourceName = GetResourceNameFromFullName(resourceFullName);
+
+            var resourceManager = new ResourceManager(assemblyResourceName, assembly);
+
+            return resourceManager.GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false);
+        }
+
+        private static string GetResourceNameFromFullName(string resourceFullName)
+        {
+            return resourceFullName
+                .Substring(0, resourceFullName.LastIndexOf(".resource", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string GetResourceFromAssembly(string resourceFullName, string resourceKey, Assembly assembly)
+        {
+            var resourceSet = GetResourceSetFromAssembly(resourceFullName, assembly);
+            return resourceSet.GetString(resourceKey);
         }
 
         private static bool CompareStrings(string firstString, string secondString)
@@ -436,6 +512,7 @@ namespace NuGetStringChecker
 
             Console.WriteLine("================================================================================================================");
             Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+            Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
             Console.WriteLine($"Errors logged at: {path}");
             Console.WriteLine("================================================================================================================");
 
@@ -455,32 +532,11 @@ namespace NuGetStringChecker
                         line.Append(",");
                         line.Append(resource);
                         line.Append(",");
-                        line.Append(collection[dll][resource].Contains("cs") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("de") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("es") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("fr") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("it") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("ja") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("ko") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("pl") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("pt-br") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("ru") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("tr") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("zh-hans") ? "Error" : "");
-                        line.Append(",");
-                        line.Append(collection[dll][resource].Contains("zh-hant") ? "Error" : "");
-                        line.Append(",");
+                        foreach (var language in _languages)
+                        {
+                            line.Append(collection[dll][resource].Contains(language) ? "Error" : "");
+                            line.Append(",");
+                        }
 
                         w.WriteLine(line.ToString());
                     }
@@ -497,6 +553,7 @@ namespace NuGetStringChecker
 
             Console.WriteLine("================================================================================================================");
             Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+            Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Count()}");
             Console.WriteLine($"Errors logged at: {path}");
             Console.WriteLine("================================================================================================================");
 
@@ -510,37 +567,19 @@ namespace NuGetStringChecker
                 w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
                 foreach (var dll in collection.Keys)
                 {
-                    var line = new StringBuilder();
-                    line.Append(dll);
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("cs") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("de") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("es") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("fr") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("it") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("ja") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("ko") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("pl") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("pt-br") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("ru") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("tr") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("zh-hans") ? "Error" : "");
-                    line.Append(",");
-                    line.Append(!collection[dll].Contains("zh-hant") ? "Error" : "");
-                    line.Append(",");
+                    if(collection[dll].Count != _languages.Count())
+                    {
+                        var line = new StringBuilder();
+                        line.Append(dll);
+                        line.Append(",");
+                        foreach (var language in _languages)
+                        {
+                            line.Append(!collection[dll].Contains(language) ? "Error" : "");
+                            line.Append(",");
+                        }
 
-                    w.WriteLine(line.ToString());
+                        w.WriteLine(line.ToString());
+                    }
                 }
             }
         }
