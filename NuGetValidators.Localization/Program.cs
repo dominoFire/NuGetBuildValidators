@@ -445,7 +445,7 @@ namespace NuGetValidators
             LogErrors(logPath,
                 _lockedStrings,
                 "Locked_Strings",
-                "These Strings are missing in the localized resources.");
+                "These are wholly locked or contain a locked sub string.");
 
             LogCollectionToXslt(logPath,
                 _nonLocalizedStringErrorsDeduped,
