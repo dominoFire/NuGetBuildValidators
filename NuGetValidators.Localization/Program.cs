@@ -155,8 +155,7 @@ namespace NuGetValidators
                                 _lockedStrings.Enqueue(lockedString);
                             }
 
-                            if (cmtString.Equals("{Locked}", StringComparison.OrdinalIgnoreCase) ||
-                                cmtString.Equals("{Locked=\"" + valueString + "\"}", StringComparison.OrdinalIgnoreCase))
+                            if (IsStringResourceLocked(cmtString, valueString))
                             {
                                 continue;
                             }
@@ -254,6 +253,82 @@ namespace NuGetValidators
             var cmtString = ((XCData)cmtData.First().FirstNode).Value;
 
             return new Tuple<string, string>(cmtString, valueString);
+        }
+
+        public static bool IsStringResourceLocked(string cmtString, string valueString)
+        {
+            if (cmtString.Equals("{Locked}", StringComparison.OrdinalIgnoreCase))              
+            {
+                return true;
+            }
+            else
+            {
+                var lockedSubStrings = GetLockedSubStrings(cmtString);
+                var valueStringCopy = string.Copy(valueString);
+                foreach(var lockedSubString in lockedSubStrings)
+                {
+                    if (valueStringCopy.Contains(lockedSubString))
+                    {
+                        valueStringCopy = valueStringCopy.Replace(lockedSubString, string.Empty);
+                    }
+                }
+                if(string.IsNullOrEmpty(valueStringCopy) || valueStringCopy.All(c => !char.IsLetter(c)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static IEnumerable<string> GetLockedSubStrings(string cmtString)
+        {
+            var lockedSubStrings = new List<string>();
+            var commentStrings = GetStringResourceComments(cmtString);
+            foreach (var commentString in commentStrings)
+            {
+                var commentStringSplit = commentString.Split('=');
+                var type = commentStringSplit[0];
+                var comments = commentStringSplit[1];
+                if (type.Contains("Locked"))
+                {
+                    var subStrings = comments.Split(',');
+                    subStrings.ToList().ForEach(s => lockedSubStrings.Add(CleanedUpLockedStrings(s.Trim())));
+
+                }
+            }
+            return lockedSubStrings;
+        }
+
+        private static string CleanedUpLockedStrings(string lockedString)
+        {
+            if (lockedString.EndsWith("}"))
+            {
+                lockedString = lockedString.Substring(0, lockedString.Length - 1);
+            }
+            if (lockedString.StartsWith("\""))
+            {
+                lockedString = lockedString.Substring(1, lockedString.Length - 2);
+            }
+            if (lockedString.EndsWith("\""))
+            {
+                lockedString = lockedString.Substring(0, lockedString.Length - 2);
+            }
+            return lockedString;
+        }
+
+        private static IEnumerable<string> GetStringResourceComments(string cmtString)
+        {
+            var commentSubStrings = new List<string>();
+            for (int i = 0; i < cmtString.Length; i++)
+            {
+                var ch = cmtString[i];
+                if (ch == '{')
+                {
+                    var endLocation = cmtString.IndexOf('}', i);
+                    commentSubStrings.Add(cmtString.Substring(i, endLocation - i + 1));
+                }
+            }
+            return commentSubStrings;
         }
 
         private static bool DoesDllContainResourceStrings(string dll)
