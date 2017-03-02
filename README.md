@@ -11,4 +11,4 @@ This is a tool used to validate the localized strings for NuGet.Tools.vsix
 * `.\NuGetValidators.Localization\bin\Debug\NuGetValidator.Localization.exe "Path\to\vsix\NuGet.Tools.vsix" "Path\to\extract\NuGet.Tools.Vsix" "Path\to\log\"`
 
 ## Output
-Output summary is displayed on the console. The tool generates 3 logs indicating different types of failures.
+Output summary is displayed on the console. The tool generates multiple logs indicating different types of failures.
