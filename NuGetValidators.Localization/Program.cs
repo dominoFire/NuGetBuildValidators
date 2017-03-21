@@ -28,7 +28,7 @@ namespace NuGetValidators
         private static int _numberOfThreads = 1;
         private static HashSet<string> _languages = new HashSet<string> { "cs", "de", "es", "fr", "it", "ja", "ko", "pl", "pt-br", "ru", "tr", "zh-hans", "zh-hant" };
 
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
             if(args.Count() < 4)
             {
@@ -38,7 +38,7 @@ namespace NuGetValidators
                 Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
                 Console.WriteLine("arg[3]: Path to the local NuGet devdiv repository. e.g. - <repo_root>\\Main\\localize\\comments\\15");
                 Console.WriteLine("Exiting...");
-                return;
+                return 1;
             }
 
             var vsixPath = args[0];
@@ -97,9 +97,9 @@ namespace NuGetValidators
             });
 
             LogErrors(logPath);
-            // No longer clearing files at the end. Files are cleared at the begining of each run
-            //CleanExtractedFiles(extractedVsixPath);
-        }
+
+            return GetReturnCode();
+         }
 
         private static void WarnIfTFSRepoNotPresent(string lciCommentsDirPath)
         {
@@ -513,6 +513,40 @@ namespace NuGetValidators
             }
         }
 
+
+        private static int GetReturnCode()
+        {
+            int result = 0;
+
+            if (_nonLocalizedStringErrors.Any())
+            {
+                // Currently these are treated as non fatal errors
+                result = result == 1 ? 1 : 0;
+            }
+            if (_misMatcherrors.Any())
+            {
+                // Currently these are treated as non fatal errors
+                result = result == 1 ? 1 : 0;
+            }
+            if (_missingLocalizedErrors.Any())
+            {
+                // These are treated as fatal errors
+                result = 1;
+            }
+            if (_nonLocalizedStringErrorsDeduped.Keys.Any())
+            {
+                // Currently these are treated as non fatal errors
+                result = result == 1 ? 1: 0;
+            }
+            if (_localizedDlls.Keys.Where(key => _localizedDlls[key].Count() != _languages.Count()).Any())
+            {
+                // These are treated as fatal errors
+                result = 1;
+            }
+
+            return result;
+        }
+
         private static void LogErrors(string logPath)
         {
             if (!Directory.Exists(logPath))
@@ -557,24 +591,27 @@ namespace NuGetValidators
             string errorType, 
             string errorDescription)
         {
-            var path = Path.Combine(logPath, errorType + ".txt");
-
-            Console.WriteLine("================================================================================================================");
-            Console.WriteLine($"Error Type: {errorType} - {errorDescription}");
-            Console.WriteLine($"Total error count: {errors.Count()}");
-            Console.WriteLine($"Errors logged at: {path}");
-            Console.WriteLine("================================================================================================================");
-
-            if (File.Exists(path))
+            if (errors.Any())
             {
-                File.Delete(path);
-            }
+                var path = Path.Combine(logPath, errorType + ".txt");
 
-            using (StreamWriter w = File.AppendText(path))
-            {
-                foreach(var error in errors)
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error Type: {errorType} - {errorDescription}");
+                Console.WriteLine($"Total error count: {errors.Count()}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
                 {
-                    w.WriteLine(error);
+                    File.Delete(path);
+                }
+
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    foreach (var error in errors)
+                    {
+                        w.WriteLine(error);
+                    }
                 }
             }
         }
@@ -602,37 +639,40 @@ namespace NuGetValidators
             string logFileName, 
             string logDescription)
         {
-            var path = Path.Combine(logPath, logFileName + ".csv");
-
-            Console.WriteLine("================================================================================================================");
-            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
-            Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
-            Console.WriteLine($"Errors logged at: {path}");
-            Console.WriteLine("================================================================================================================");
-
-            if (File.Exists(path))
+            if (collection.Keys.Any())
             {
-                File.Delete(path);
-            }
-            using (StreamWriter w = File.AppendText(path))
-            {
-                w.WriteLine("Dll Name, Resource Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
-                foreach (var dll in collection.Keys)
+                var path = Path.Combine(logPath, logFileName + ".csv");
+
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
                 {
-                    foreach (var resource in collection[dll].Keys)
+                    File.Delete(path);
+                }
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    w.WriteLine("Dll Name, Resource Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
+                    foreach (var dll in collection.Keys)
                     {
-                        var line = new StringBuilder();
-                        line.Append(dll);
-                        line.Append(",");
-                        line.Append(resource);
-                        line.Append(",");
-                        foreach (var language in _languages)
+                        foreach (var resource in collection[dll].Keys)
                         {
-                            line.Append(collection[dll][resource].Contains(language) ? "Error" : "");
+                            var line = new StringBuilder();
+                            line.Append(dll);
                             line.Append(",");
-                        }
+                            line.Append(resource);
+                            line.Append(",");
+                            foreach (var language in _languages)
+                            {
+                                line.Append(collection[dll][resource].Contains(language) ? "Error" : "");
+                                line.Append(",");
+                            }
 
-                        w.WriteLine(line.ToString());
+                            w.WriteLine(line.ToString());
+                        }
                     }
                 }
             }
@@ -643,36 +683,39 @@ namespace NuGetValidators
             string logFileName,
             string logDescription)
         {
-            var path = Path.Combine(logPath, logFileName + ".csv");
-
-            Console.WriteLine("================================================================================================================");
-            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
-            Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Count()}");
-            Console.WriteLine($"Errors logged at: {path}");
-            Console.WriteLine("================================================================================================================");
-
-            if (File.Exists(path))
+            if (collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Any())
             {
-                File.Delete(path);
-            }
+                var path = Path.Combine(logPath, logFileName + ".csv");
 
-            using (StreamWriter w = File.AppendText(path))
-            {
-                w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
-                foreach (var dll in collection.Keys)
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Count()}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
                 {
-                    if(collection[dll].Count != _languages.Count())
-                    {
-                        var line = new StringBuilder();
-                        line.Append(dll);
-                        line.Append(",");
-                        foreach (var language in _languages)
-                        {
-                            line.Append(!collection[dll].Contains(language) ? "Error" : "");
-                            line.Append(",");
-                        }
+                    File.Delete(path);
+                }
 
-                        w.WriteLine(line.ToString());
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
+                    foreach (var dll in collection.Keys)
+                    {
+                        if (collection[dll].Count != _languages.Count())
+                        {
+                            var line = new StringBuilder();
+                            line.Append(dll);
+                            line.Append(",");
+                            foreach (var language in _languages)
+                            {
+                                line.Append(!collection[dll].Contains(language) ? "Error" : "");
+                                line.Append(",");
+                            }
+
+                            w.WriteLine(line.ToString());
+                        }
                     }
                 }
             }
@@ -683,26 +726,29 @@ namespace NuGetValidators
             string logFileName,
             string logDescription)
         {
-            var path = Path.Combine(logPath, logFileName + "_Simple.csv");
-
-            Console.WriteLine("================================================================================================================");
-            Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
-            Console.WriteLine($"Errors logged at: {path}");
-            Console.WriteLine("================================================================================================================");
-
-            if (File.Exists(path))
+            if (collection.Keys.Any())
             {
-                File.Delete(path);
-            }
-            using (StreamWriter w = File.AppendText(path))
-            {
-                foreach (var dll in collection.Keys)
+                var path = Path.Combine(logPath, logFileName + "_Simple.csv");
+
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
                 {
-                    foreach (var resource in collection[dll].Keys)
+                    File.Delete(path);
+                }
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    foreach (var dll in collection.Keys)
                     {
-                        foreach (var langauge in collection[dll][resource])
+                        foreach (var resource in collection[dll].Keys)
                         {
-                            w.WriteLine(string.Concat(dll, ",", resource, ",", langauge));
+                            foreach (var langauge in collection[dll][resource])
+                            {
+                                w.WriteLine(string.Concat(dll, ",", resource, ",", langauge));
+                            }
                         }
                     }
                 }
