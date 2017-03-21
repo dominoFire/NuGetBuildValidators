@@ -30,12 +30,13 @@ namespace NuGetValidators
 
         public static void Main(string[] args)
         {
-            if(args.Count() < 3)
+            if(args.Count() < 4)
             {
-                Console.WriteLine("Please enter 3 arguments - ");
+                Console.WriteLine("Please enter the following 4 arguments - ");
                 Console.WriteLine("arg[0]: NuGet.Tools.Vsix path");
                 Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.");
                 Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
+                Console.WriteLine("arg[3]: Path to the local NuGet devdiv repository. e.g. - <repo_root>\\Main\\localize\\comments\\15");
                 Console.WriteLine("Exiting...");
                 return;
             }
@@ -43,6 +44,9 @@ namespace NuGetValidators
             var vsixPath = args[0];
             var extractedVsixPath = args[1];
             var logPath = args[2];
+            var lciCommentsDirPath = args[3];
+
+            WarnIfTFSRepoNotPresent(lciCommentsDirPath);
 
             CleanExtractedFiles(extractedVsixPath);
             ExtractVsix(vsixPath, extractedVsixPath);
@@ -55,7 +59,7 @@ namespace NuGetValidators
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
             var englishDlls = GetEnglishDlls(extractedVsixPath);
-            var lciCommentsDirPath = @"E:\NuGet TFS\Main\localize\comments\15";
+
 
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
@@ -95,6 +99,15 @@ namespace NuGetValidators
             LogErrors(logPath);
             // No longer clearing files at the end. Files are cleared at the begining of each run
             //CleanExtractedFiles(extractedVsixPath);
+        }
+
+        private static void WarnIfTFSRepoNotPresent(string lciCommentsDirPath)
+        {
+            if (!Directory.Exists(lciCommentsDirPath))
+            {
+                Console.WriteLine($"WARNING: LCI comments path '{lciCommentsDirPath}' in local TFS repo not found! "+
+                    "The reults will not contain any locked strings and the non localized string count will be higher.");
+            }
         }
 
         private static string[] GetEnglishDlls(string extractedVsixPath)
@@ -502,6 +515,12 @@ namespace NuGetValidators
 
         private static void LogErrors(string logPath)
         {
+            if (!Directory.Exists(logPath))
+            {
+                Console.WriteLine($"INFO: Creating new Director for logs at '{logPath}'");
+                Directory.CreateDirectory(logPath);
+            }
+
             LogErrors(logPath, 
                 _nonLocalizedStringErrors, 
                 "Not_Localized_Strings", 
