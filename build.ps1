@@ -49,13 +49,51 @@ Invoke-BuildStep 'Building NuGetValidators.Sln' {
     -skip:$Fast `
     -ev +BuildErrors
     
+Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS14' {
+        
+        $NuGetBuildValidatorsLocalizationExe = ".\NuGetValidators.Localization\bin\Debug\NuGetValidator.Localization.exe"
+        $NuGetTFSCommentsPath = Join-Path $NuGetTFSPath 14
+        $VSIXLogPath = Join-Path $LogPath "14"
+        
+        # Run NuGetBuildValidators.Localization
+        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS14VSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath"
+        & $NuGetBuildValidatorsLocalizationExe $VS14VSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath
+
+        if (-not $?)
+        {
+            Write-Error "Run NuGetBuildValidators.Localization failed"
+            exit 1
+        }
+    } `
+    -ev +BuildErrors
+    
+Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15' {
+        
+        $NuGetBuildValidatorsLocalizationExe = ".\NuGetValidators.Localization\bin\Debug\NuGetValidator.Localization.exe"
+        $NuGetTFSCommentsPath = Join-Path $NuGetTFSPath 15
+        $VSIXLogPath = Join-Path $LogPath "15"
+        
+        # Run NuGetBuildValidators.Localization
+        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS15InsVSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath"
+        & $NuGetBuildValidatorsLocalizationExe $VS15VSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath
+
+        if (-not $?)
+        {
+            Write-Error "Run NuGetBuildValidators.Localization failed"
+            exit 1
+        }
+    } `
+    -ev +BuildErrors
+    
 Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15Insertable' {
         
         $NuGetBuildValidatorsLocalizationExe = ".\NuGetValidators.Localization\bin\Debug\NuGetValidator.Localization.exe"
         $NuGetTFSCommentsPath = Join-Path $NuGetTFSPath 15
+        $VSIXLogPath = Join-Path $LogPath "15Ins"
+        
         # Run NuGetBuildValidators.Localization
-        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS15InsVSIXPath $VSIXUnzipPath $LogPath $NuGetTFSPath"
-        & $NuGetBuildValidatorsLocalizationExe $VS15InsVSIXPath $VSIXUnzipPath $LogPath $NuGetTFSPath
+        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS15InsVSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath"
+        & $NuGetBuildValidatorsLocalizationExe $VS15InsVSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath
 
         if (-not $?)
         {
