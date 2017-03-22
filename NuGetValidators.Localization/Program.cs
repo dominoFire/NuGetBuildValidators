@@ -51,7 +51,6 @@ namespace NuGetValidators
             CleanExtractedFiles(extractedVsixPath);
             ExtractVsix(vsixPath, extractedVsixPath);
 
-
             // For Testing
             //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
             //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
@@ -59,8 +58,6 @@ namespace NuGetValidators
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
             var englishDlls = GetEnglishDlls(extractedVsixPath);
-
-
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
@@ -535,8 +532,8 @@ namespace NuGetValidators
             }
             if (_nonLocalizedStringErrorsDeduped.Keys.Any())
             {
-                // Currently these are treated as non fatal errors
-                result = result == 1 ? 1: 0;
+                // These are treated as fatal errors
+                result = 1;
             }
             if (_localizedDlls.Keys.Where(key => _localizedDlls[key].Count() != _languages.Count()).Any())
             {
