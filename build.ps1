@@ -65,6 +65,7 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS14' {
             exit 1
         }
     } `
+    -Skip:(-not $VS14VSIXPath) `
     -ev +BuildErrors
     
 Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15' {
@@ -83,6 +84,7 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15' {
             exit 1
         }
     } `
+    -Skip:(-not $VS15VSIXPath) `
     -ev +BuildErrors
     
 Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15Insertable' {
@@ -101,6 +103,7 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15Insertable' {
             exit 1
         }
     } `
+    -Skip:(-not $VS15InsVSIXPath) `
     -ev +BuildErrors
 
 
