@@ -62,7 +62,6 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS14' {
         if (-not $?)
         {
             Write-Error "Run NuGetBuildValidators.Localization failed"
-            exit 1
         }
     } `
     -Skip:(-not $VS14VSIXPath) `
@@ -81,7 +80,6 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15' {
         if (-not $?)
         {
             Write-Error "Run NuGetBuildValidators.Localization failed"
-            exit 1
         }
     } `
     -Skip:(-not $VS15VSIXPath) `
@@ -100,7 +98,6 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15Insertable' {
         if (-not $?)
         {
             Write-Error "Run NuGetBuildValidators.Localization failed"
-            exit 1
         }
     } `
     -Skip:(-not $VS15InsVSIXPath) `
