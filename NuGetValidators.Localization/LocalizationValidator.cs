@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Resources;
@@ -14,7 +13,7 @@ using System.Xml.Linq;
 
 namespace NuGetValidators
 {
-    class Program
+    class LocalizationValidator
     {
         private static ConcurrentQueue<string> _nonLocalizedStringErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
@@ -25,7 +24,7 @@ namespace NuGetValidators
         private static object _packageStringCollectionLock = new object();
         private static object _packageDllCollectionLock = new object();
 
-        private static int _numberOfThreads = 1;
+        private static int _numberOfThreads = 8;
         private static HashSet<string> _languages = new HashSet<string> { "cs", "de", "es", "fr", "it", "ja", "ko", "pl", "pt-br", "ru", "tr", "zh-hans", "zh-hant" };
 
         public static int Main(string[] args)
@@ -48,8 +47,8 @@ namespace NuGetValidators
 
             WarnIfTFSRepoNotPresent(lciCommentsDirPath);
 
-            CleanExtractedFiles(extractedVsixPath);
-            ExtractVsix(vsixPath, extractedVsixPath);
+            VsixUtility.CleanExtractedFiles(extractedVsixPath);
+            VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             // For Testing
             //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
@@ -611,24 +610,6 @@ namespace NuGetValidators
                     }
                 }
             }
-        }
-
-        private static void CleanExtractedFiles(string path)
-        {
-            Console.WriteLine("Cleaning up the extracted files");
-            if (Directory.Exists(path))
-            {
-                Directory.Delete(path, recursive: true);
-            }
-        }
-
-        private static void ExtractVsix(string vsixPath, string extractedVsixPath)
-        {
-            Console.WriteLine($"Extracting {vsixPath} to {extractedVsixPath}");
-
-            ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);
-
-            Console.WriteLine($"Done Extracting...");
         }
 
         private static void LogCollectionToXslt(string logPath, 
