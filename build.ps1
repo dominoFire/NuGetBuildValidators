@@ -74,7 +74,7 @@ Invoke-BuildStep 'Run NuGetBuildValidators.Localization for VS15' {
         $VSIXLogPath = Join-Path $LogPath "15"
         
         # Run NuGetBuildValidators.Localization
-        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS15InsVSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath"
+        Trace-Log ". `"$NuGetBuildValidatorsLocalizationExe`" $VS15VSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath"
         & $NuGetBuildValidatorsLocalizationExe $VS15VSIXPath $VSIXUnzipPath $VSIXLogPath $NuGetTFSPath
 
         if (-not $?)
