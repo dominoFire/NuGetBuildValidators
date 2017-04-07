@@ -51,7 +51,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Utility\NuGetValidators.Utility.csproj">
+    <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj">
       <Project>{c2d18145-15a8-43b3-bfd7-9c461401b192}</Project>
       <Name>NuGetValidators.Utility</Name>
     </ProjectReference>

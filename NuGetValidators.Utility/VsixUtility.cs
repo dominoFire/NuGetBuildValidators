@@ -12,6 +12,8 @@ namespace NuGetValidators
     {
         public static void ExtractVsix(string vsixPath, string extractedVsixPath)
         {
+            CleanExtractedFiles(extractedVsixPath);
+
             Console.WriteLine($"Extracting {vsixPath} to {extractedVsixPath}");
 
             ZipFile.ExtractToDirectory(vsixPath, extractedVsixPath);

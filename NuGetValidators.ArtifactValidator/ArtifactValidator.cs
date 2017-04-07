@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,13 +19,37 @@ namespace NuGetValidators
         public int ValidateSigning(string artifactsDirectory)
         {
             var result = 0;
-            var files = Directory.GetFiles(artifactsDirectory, "*.*", SearchOption.AllDirectories);
-            var snExePath = GetSnExePath();
-            //ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
-            //Parallel.ForEach(files, ops, file =>
-            //{
+            var files = Directory.GetFiles(artifactsDirectory, "*.*", SearchOption.AllDirectories)
+                .Where(f => f.EndsWith("dll") )
+                .ToArray();
+            var snExePath = @"C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\sn.exe";
+            //var snExePath = GetSnExePath();
 
-            //});
+            ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
+            Parallel.ForEach(files, ops, file =>
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    UseShellExecute = false,
+                    FileName = snExePath,
+                    Arguments = $" -v {file}"
+                };
+                //Console.WriteLine("======================================================");
+                //Console.WriteLine($"{snExePath} -v {file}");
+                using (var process = new Process())
+                {
+                    process.StartInfo = startInfo;
+                    process.Start();
+                    process.WaitForExit();
+                    if (process.ExitCode != 0)
+                    {
+
+                        Console.WriteLine($"Error in file '{file}'");
+
+                    }
+                }
+                //Console.WriteLine("======================================================");
+            });
 
             return result;
         }
@@ -32,8 +57,8 @@ namespace NuGetValidators
         public int CompareVsix(string referenceVsix, string newVsix)
         {
             int result = 0;
-            var tempDirectory = @"F:\validation\NuGetValidators.Artifact";
-            //using (var tempDirectory = new TemporaryDirectory())
+            Console.WriteLine("==========================================================");
+            using (var tempDirectory = new TemporaryDirectory())
             {
                 var referenceVsixDirectoryName = "ReferenceVsix";
                 var newVsixDirectoryName = "NewVsix";
@@ -42,8 +67,8 @@ namespace NuGetValidators
                 var referenceVsixDirectory = Path.Combine(tempDirectory, referenceVsixDirectoryName, vsixName);
                 var newVsixDirectory = Path.Combine(tempDirectory, newVsixDirectoryName, vsixName);
 
-                //VsixUtility.ExtractVsix(referenceVsix, referenceVsixDirectory);
-                //VsixUtility.ExtractVsix(newVsix, newVsixDirectory);
+                VsixUtility.ExtractVsix(referenceVsix, referenceVsixDirectory);
+                VsixUtility.ExtractVsix(newVsix, newVsixDirectory);
 
                 var referenceFiles = Directory.GetFiles(referenceVsixDirectory, "*.*", SearchOption.AllDirectories);
 
@@ -54,7 +79,7 @@ namespace NuGetValidators
                     ValidateFileExists(expectedFile);
                 });
             }
-
+            Console.WriteLine("==========================================================");
             return result;
         }
 
@@ -63,7 +88,7 @@ namespace NuGetValidators
             
             if (!File.Exists(expectedFile))
             {
-                Console.WriteLine($"File '{Path.GetFileName(expectedFile)}' does not exist at expected path '{expectedFile}'");
+                Console.WriteLine($"ERROR: File '{Path.GetFileName(expectedFile)}' does not exist at expected path '{expectedFile}'");
                 return false;
             }
             else
