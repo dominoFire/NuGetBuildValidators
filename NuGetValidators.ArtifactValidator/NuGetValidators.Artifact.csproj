@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4C895557-98E1-49EA-AA20-9E770EA2D46B}</ProjectGuid>
+    <ProjectGuid>{EC028610-C54E-4685-B109-629D48249891}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>NuGetValidator.Localization</RootNamespace>
-    <AssemblyName>NuGetValidator.Localization</AssemblyName>
+    <RootNamespace>NuGetValidators.ArtifactValidator</RootNamespace>
+    <AssemblyName>NuGetValidators.ArtifactValidator</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -34,8 +34,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -44,8 +42,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LocalizationValidator.cs" />
+    <Compile Include="ArtifactValidator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sample.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
