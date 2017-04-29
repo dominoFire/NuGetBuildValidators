@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace NuGetValidators
@@ -95,16 +95,6 @@ namespace NuGetValidators
             {
                 return true;
             }
-        }
-
-        private string GetSnExePath()
-        {
-            var sdkPath = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
-
-            var snExePath = Directory.GetFiles(sdkPath, "sn.exe", SearchOption.AllDirectories)
-                .FirstOrDefault();
-
-            return snExePath;
         }
 
     }
