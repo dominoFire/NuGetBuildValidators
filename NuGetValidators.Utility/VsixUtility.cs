@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NuGetValidators
+namespace NuGetValidators.Utility
 {
     public class VsixUtility
     {

@@ -8,18 +8,47 @@
 
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <AssemblyVersion>1.0.1</AssemblyVersion>
-    <AssemblyFileVersion>1.0.1</AssemblyFileVersion>
+    <AssemblyVersion>1.1.0</AssemblyVersion>
+    <AssemblyFileVersion>1.1.0</AssemblyFileVersion>
     <IsTool>true</IsTool>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageVersion>1.1.0</PackageVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" >
-      
-    </ProjectReference>
+    <PackageReference Include="ILRepack" Version="2.0.13" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" />
+  </ItemGroup>
+
+
+  <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Publish;ILMerge" />
+  </Target>
+
+
+  <Target Name="ILMerge">
+    <PropertyGroup>
+      <FinalOutputPath>$(MSBuildProjectDirectory)\$(OutputPath)</FinalOutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <BuildArtifacts Include="$(FinalOutputPath)\*.dll" />
+    </ItemGroup>
+    <PropertyGroup>
+      <PathToBuiltExe>$(FinalOutputPath)NuGetValidator.Localization.exe</PathToBuiltExe>
+      <PathToMergedExe>$(FinalOutputPath)NuGetValidator.Localization.exe</PathToMergedExe>
+      <PathToILMergeLog>$(FinalOutputPath)IlMergeLog.txt</PathToILMergeLog>
+      <IlmergeCommand>$(ILRepack) $(PathToBuiltExe) @(BuildArtifacts, ' ') /out:$(PathToMergedExe) /log:$(PathToILMergeLog)</IlmergeCommand>
+    </PropertyGroup>
+    <Message Text="$IlmergeCommand" Importance="high" />
+    <Exec Command="$(IlmergeCommand)" ContinueOnError="false" />
+  </Target>
+  
 </Project>
