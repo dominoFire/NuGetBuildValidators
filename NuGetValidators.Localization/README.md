@@ -45,7 +45,7 @@ msbuild
 
 ### Using NuGet Package NuGetValidator.Localization.nupkg
 
-THings in flight, these instructions will be added soon....
+Things in flight, these instructions will be added soon....
 
 ## Output
 
