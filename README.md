@@ -7,12 +7,12 @@ This is a tool used to validate the NuGet artifacts. The repository contains the
 
 This tool is used to validate the NuGet.Tools.VSIX for localization of all strings.
 
-[README.md](NuGetValidators.Localization\README.md)
+[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidators.Localization)
 
 ## NuGet Artifacts Validator
 
 This tool is used to validate the NuGet.Tools.VSIX for signing of all files.
 
-[README.md](NuGetValidators.Artifact\README.md)
+[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidators.Artifact)
 
 
