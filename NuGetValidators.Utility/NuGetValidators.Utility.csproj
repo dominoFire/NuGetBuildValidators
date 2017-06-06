@@ -2,22 +2,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup>
-    <Version>1.1.0</Version>
     <TargetFramework>net45</TargetFramework>
     <RootNamespace>NuGetValidator.Utility</RootNamespace>
     <AssemblyName>NuGetValidator.Utility</AssemblyName>
-    <PackageTags>semver;semantic versioning</PackageTags>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
-    <AssemblyFileVersion>1.1.0</AssemblyFileVersion>
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageVersion>1.1.0</PackageVersion>
+    <PackageVersion>1.2.0</PackageVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
+    <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/mishra14/NuGetBuildValidators</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
 </Project>
