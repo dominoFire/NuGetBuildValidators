@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26228.9
+VisualStudioVersion = 15.0.26430.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetValidators.Localization", "NuGetValidators.Localization\NuGetValidators.Localization.csproj", "{4C895557-98E1-49EA-AA20-9E770EA2D46B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetValidators.Artifact", "NuGetValidators.ArtifactValidator\NuGetValidators.Artifact.csproj", "{EC028610-C54E-4685-B109-629D48249891}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetValidators.Utility", "NuGetValidators.Utility\NuGetValidators.Utility.csproj", "{C2D18145-15A8-43B3-BFD7-9C461401B192}"
 EndProject
@@ -15,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		common.ps1 = common.ps1
 		README.md = README.md
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NuGetValidators.Artifact", "NuGetValidators.Artifact\NuGetValidators.Artifact.csproj", "{187E06DA-F0F3-448C-85FD-7C7340587936}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,14 +26,14 @@ Global
 		{4C895557-98E1-49EA-AA20-9E770EA2D46B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C895557-98E1-49EA-AA20-9E770EA2D46B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C895557-98E1-49EA-AA20-9E770EA2D46B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EC028610-C54E-4685-B109-629D48249891}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EC028610-C54E-4685-B109-629D48249891}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EC028610-C54E-4685-B109-629D48249891}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EC028610-C54E-4685-B109-629D48249891}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C2D18145-15A8-43B3-BFD7-9C461401B192}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C2D18145-15A8-43B3-BFD7-9C461401B192}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2D18145-15A8-43B3-BFD7-9C461401B192}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2D18145-15A8-43B3-BFD7-9C461401B192}.Release|Any CPU.Build.0 = Release|Any CPU
+		{187E06DA-F0F3-448C-85FD-7C7340587936}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{187E06DA-F0F3-448C-85FD-7C7340587936}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{187E06DA-F0F3-448C-85FD-7C7340587936}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{187E06DA-F0F3-448C-85FD-7C7340587936}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
