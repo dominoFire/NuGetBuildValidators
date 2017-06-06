@@ -13,15 +13,14 @@ The tool can be used in a few different ways -
 
 The NuGetValidator.Localization.exe requires the following arguments - 
 
-```
-arg[0]: NuGet.Tools.Vsix path
-arg[1]: Path to extract NuGet.Tools.Vsix into. 
-  Folder need not be present, but Program should have write access to the location.
-arg[2]: Path to the directory for writing errors. 
-  Folder need not be present, but Program should have write access to the location.
-arg[3]: Path to the local NuGet Localization repository. 
-  e.g. - <NuGet_Localization_repository>\Main\localize\comments\15
-```
+`arg[0]: NuGet.Tools.Vsix path`
+
+`arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.`
+
+`arg[2]: Path to the directory for writing errors. Folder need not be present, but Program should have write access to the location.`
+
+`arg[3]: Path to the local NuGet Localization repository. e.g. - <NuGet_Localization_repository>\Main\localize\comments\15`
+
 NuGet Localization repository - https://github.com/NuGet/NuGet.Build.Localization
 
 * `git clone https://github.com/mishra14/NuGetBuildValidators.git`
