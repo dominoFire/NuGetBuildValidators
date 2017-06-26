@@ -14,7 +14,7 @@ using System.Xml.Linq;
 
 namespace NuGetValidators.Localization
 {
-    class LocalizationValidator
+    public class LocalizationValidator
     {
         private static ConcurrentQueue<string> _nonLocalizedStringErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
@@ -36,15 +36,21 @@ namespace NuGetValidators.Localization
                 Console.WriteLine("arg[0]: NuGet.Tools.Vsix path");
                 Console.WriteLine("arg[1]: Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.");
                 Console.WriteLine("arg[2]: Path to the directory for writing errors. File need not be present, but Program should have write access to the location.");
-                Console.WriteLine("arg[3]: Path to the local NuGet devdiv repository. e.g. - <repo_root>\\Main\\localize\\comments\\15");
+                Console.WriteLine("arg[3]: Path to the local NuGet localization repository. e.g. - <repo_root>\\Main\\localize\\comments\\15");
                 Console.WriteLine("Exiting...");
                 return 1;
             }
 
-            var vsixPath = args[0];
-            var extractedVsixPath = args[1];
-            var logPath = args[2];
-            var lciCommentsDirPath = args[3];
+            return ExecuteForVsix(VsixPath: args[0], VsixExtractPath: args[1], OutputPath: args[2], CommentsPath: args[3]);
+         }
+
+
+        public static int ExecuteForVsix(string VsixPath, string VsixExtractPath, string OutputPath, string CommentsPath)
+        {
+            var vsixPath = VsixPath;
+            var extractedVsixPath = VsixExtractPath;
+            var logPath = OutputPath;
+            var lciCommentsDirPath = CommentsPath;
 
             WarnIfTFSRepoNotPresent(lciCommentsDirPath);
 
@@ -96,7 +102,62 @@ namespace NuGetValidators.Localization
             LogErrors(logPath);
 
             return GetReturnCode();
-         }
+        }
+
+        public static int ExecuteForArtifacts(string ArtifactsPath, string OutputPath, string CommentsPath)
+        {
+            var artifactsPath = ArtifactsPath;
+            var logPath = OutputPath;
+            var lciCommentsDirPath = CommentsPath;
+
+            WarnIfTFSRepoNotPresent(lciCommentsDirPath);
+
+            // For Testing
+            //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
+            //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
+            //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
+            //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
+
+            var englishDlls = GetEnglishDlls(artifactsPath);
+
+            ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
+            Parallel.ForEach(englishDlls, ops, englishDll =>
+            {
+                if (DoesDllContainResourceStrings(englishDll))
+                {
+                    Console.WriteLine($"Validating resource strings for ${englishDll}.");
+                    var translatedDlls = GetTranslatedDlls(artifactsPath, Path.GetFileNameWithoutExtension(englishDll));
+
+                    // Add translated dlls into a collection to filter out localized dlls
+                    AddToCollection(_localizedDlls,
+                        Path.GetFileName(englishDll));
+
+                    foreach (var translatedDll in translatedDlls)
+                    {
+                        try
+                        {
+                            // Add translated dlls into a collection to filter out localized dlls
+                            AddToCollection(_localizedDlls,
+                                Path.GetFileName(englishDll),
+                                Directory.GetParent(translatedDll).Name);
+                            CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"No resource strings found in {englishDll}");
+                }
+            });
+
+            LogErrors(logPath);
+
+            return GetReturnCode();
+        }
 
         private static void WarnIfTFSRepoNotPresent(string lciCommentsDirPath)
         {
