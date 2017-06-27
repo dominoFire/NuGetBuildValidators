@@ -10,7 +10,7 @@
 
   <PropertyGroup>
     <PackageVersion>1.2.0</PackageVersion>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild Condition="$(PackAndMerge) == 'true'">true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
     <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>

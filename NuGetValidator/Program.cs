@@ -11,7 +11,7 @@ namespace NuGetValidator
     {
         private static readonly string DebugOption = "--debug";
         private static readonly string AppName = "nugetvalidator";
-        private static readonly string HelpOption = "--help";
+        private static readonly string HelpOption = "-h|--help";
 
 
         public static int Main(string[] args)
@@ -80,7 +80,7 @@ namespace NuGetValidator
         private static void RegisterCommands(CommandLineApplication app)
         {
             // Register commands
-
+            LocalizationValidatorCommand.Register(app);
         }
     }
 }

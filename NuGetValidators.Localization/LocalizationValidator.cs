@@ -65,39 +65,9 @@ namespace NuGetValidators.Localization
 
             var englishDlls = GetEnglishDlls(extractedVsixPath);
 
-            ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
-            Parallel.ForEach(englishDlls, ops, englishDll =>
-            {
-                if (DoesDllContainResourceStrings(englishDll))
-                {
-                    Console.WriteLine($"Validating resource strings for ${englishDll}.");
-                    var translatedDlls = GetTranslatedDlls(extractedVsixPath, Path.GetFileNameWithoutExtension(englishDll));
+            Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
 
-                    // Add translated dlls into a collection to filter out localized dlls
-                    AddToCollection(_localizedDlls,
-                        Path.GetFileName(englishDll));
-
-                    foreach (var translatedDll in translatedDlls)
-                    {
-                        try
-                        {
-                            // Add translated dlls into a collection to filter out localized dlls
-                            AddToCollection(_localizedDlls,
-                                Path.GetFileName(englishDll),
-                                Directory.GetParent(translatedDll).Name);
-                            CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"No resource strings found in {englishDll}");
-                }
-            });
+            ExecuteForAllEnglishDlls(lciCommentsDirPath, englishDlls);
 
             LogErrors(logPath);
 
@@ -118,15 +88,34 @@ namespace NuGetValidators.Localization
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
-            var englishDlls = GetEnglishDlls(artifactsPath);
+            var englishDlls = GetEnglishDlls(artifactsPath, isArtifacts: true);
 
+            Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
+
+            ExecuteForAllEnglishDlls(lciCommentsDirPath, englishDlls);
+
+            LogErrors(logPath);
+
+            return GetReturnCode();
+        }
+
+        private static void ExecuteForAllEnglishDlls(string lciCommentsDirPath, string[] englishDlls)
+        {
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
             {
                 if (DoesDllContainResourceStrings(englishDll))
                 {
-                    Console.WriteLine($"Validating resource strings for ${englishDll}.");
-                    var translatedDlls = GetTranslatedDlls(artifactsPath, Path.GetFileNameWithoutExtension(englishDll));
+
+                    var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll)
+                        .ToList();
+
+                    Console.WriteLine($"Validating: {englishDll} "+
+                        Environment.NewLine +
+                        $"\t Contains resource strings: True" +
+                        Environment.NewLine +
+                        $"\t Translated dlls: {translatedDlls.Count()}" +
+                        Environment.NewLine);
 
                     // Add translated dlls into a collection to filter out localized dlls
                     AddToCollection(_localizedDlls,
@@ -140,6 +129,7 @@ namespace NuGetValidators.Localization
                             AddToCollection(_localizedDlls,
                                 Path.GetFileName(englishDll),
                                 Directory.GetParent(translatedDll).Name);
+
                             CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
                         }
                         catch (Exception e)
@@ -150,13 +140,12 @@ namespace NuGetValidators.Localization
                 }
                 else
                 {
-                    Console.WriteLine($"No resource strings found in {englishDll}");
+                    Console.WriteLine($"Validating: {englishDll} " +
+                        Environment.NewLine +
+                        $"\t Contains resource strings: False" +
+                        Environment.NewLine);
                 }
             });
-
-            LogErrors(logPath);
-
-            return GetReturnCode();
         }
 
         private static void WarnIfTFSRepoNotPresent(string lciCommentsDirPath)
@@ -168,14 +157,41 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static string[] GetEnglishDlls(string extractedVsixPath)
+        private static string[] GetEnglishDlls(string root, bool isArtifacts = false)
         {
-            return Directory.GetFiles(extractedVsixPath, "NuGet.*.dll");
+            if (isArtifacts)
+            {
+                var files = new List<string>();
+                var directories = Directory.GetDirectories(root)
+                    .Where(d => Path.GetFileName(d).StartsWith("NuGet", StringComparison.Ordinal));
+
+                foreach (var dir in directories)
+                {
+                    var englishDlls = Directory.GetFiles(dir, Path.GetFileName(dir) + ".dll", SearchOption.AllDirectories)
+                        .Where(p => p.Contains("bin"));
+
+                    if (englishDlls.Any())
+                    {
+                        files.Add(englishDlls.First());
+                    }
+                    else
+                    {
+                        Console.WriteLine($"WARNING: No matching NuGet dll found in {dir}");
+                    }
+                }
+
+                return files.ToArray();
+            }
+            else
+            {
+                return Directory.GetFiles(root, "NuGet.*.dll", SearchOption.TopDirectoryOnly);
+            }
         }
 
-        private static string[] GetTranslatedDlls(string extractedVsixPath, string englishDllName)
+        private static string[] GetTranslatedDlls(string rootDir, string englishDllPath)
         {
-            return Directory.GetFiles(extractedVsixPath, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
+            var englishDllName = Path.GetFileNameWithoutExtension(englishDllPath);
+            return Directory.GetFiles(rootDir, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
         }
 
         private static bool CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
