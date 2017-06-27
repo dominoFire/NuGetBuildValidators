@@ -2,14 +2,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>exe</OutputType>
-    <TargetFramework>net45</TargetFramework>
+    <TargetFramework>net451</TargetFramework>
     <RootNamespace>NuGetValidator.Localization</RootNamespace>
     <AssemblyName>NuGetValidator.Localization</AssemblyName>
     <IsTool>true</IsTool>
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageVersion>1.2.0</PackageVersion>
+    <PackageVersion>1.3.0</PackageVersion>
     <GeneratePackageOnBuild Condition="$(PackAndMerge) == 'true'">true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
