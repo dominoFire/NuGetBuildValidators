@@ -169,7 +169,7 @@ namespace NuGetValidators.Localization
                 foreach (var dir in directories)
                 {
                     var englishDlls = Directory.GetFiles(dir, Path.GetFileName(dir) + ".dll", SearchOption.AllDirectories)
-                        .Where(p => p.Contains("bin") || p.Contains("lib"))
+                        .Where(p => p.Contains("bin"))
                         .OrderBy(p => p);
 
                     if (englishDlls.Any())
