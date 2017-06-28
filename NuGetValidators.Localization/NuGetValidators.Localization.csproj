@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>exe</OutputType>
+    <OutputType>library</OutputType>
     <TargetFramework>net451</TargetFramework>
     <RootNamespace>NuGetValidator.Localization</RootNamespace>
     <AssemblyName>NuGetValidator.Localization</AssemblyName>
@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageVersion>1.3.0</PackageVersion>
-    <GeneratePackageOnBuild Condition="$(PackAndMerge) == 'true'">true</GeneratePackageOnBuild>
+    <PackageVersion>1.3.1</PackageVersion>
+    <GeneratePackageOnBuild Condition="$(MergeLocValidator) == 'true'">true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
     <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>
@@ -26,9 +26,8 @@
     <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" PrivateAssets="All" />
   </ItemGroup>
 
-
   <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Publish;ILMerge" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="ILMerge" />
   </Target>
 
 
@@ -40,13 +39,12 @@
       <BuildArtifacts Include="$(FinalOutputPath)\*.dll" />
     </ItemGroup>
     <PropertyGroup>
-      <PathToBuiltExe>$(FinalOutputPath)NuGetValidator.Localization.exe</PathToBuiltExe>
       <PathToMergedExe>$(FinalOutputPath)NuGetValidator.Localization.exe</PathToMergedExe>
       <PathToILMergeLog>$(FinalOutputPath)IlMergeLog.txt</PathToILMergeLog>
-      <IlmergeCommand>$(ILRepack) $(PathToBuiltExe) @(BuildArtifacts, ' ') /out:$(PathToMergedExe) /log:$(PathToILMergeLog)</IlmergeCommand>
+      <IlmergeCommand>$(ILRepack) @(BuildArtifacts, ' ') /out:$(PathToMergedExe) /log:$(PathToILMergeLog)</IlmergeCommand>
     </PropertyGroup>
-    <Message Text="$IlmergeCommand" Importance="high" />
     <Exec Command="$(IlmergeCommand)" ContinueOnError="false" />
   </Target>
-  
+
+
 </Project>
