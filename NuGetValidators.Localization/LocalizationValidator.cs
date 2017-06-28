@@ -163,12 +163,14 @@ namespace NuGetValidators.Localization
             {
                 var files = new List<string>();
                 var directories = Directory.GetDirectories(root)
-                    .Where(d => Path.GetFileName(d).StartsWith("NuGet", StringComparison.Ordinal));
+                    .Where(d => Path.GetFileName(d).StartsWith("NuGet", StringComparison.OrdinalIgnoreCase) ||
+                                Path.GetFileName(d).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase));
 
                 foreach (var dir in directories)
                 {
                     var englishDlls = Directory.GetFiles(dir, Path.GetFileName(dir) + ".dll", SearchOption.AllDirectories)
-                        .Where(p => p.Contains("bin"));
+                        .Where(p => p.Contains("bin") || p.Contains("lib"))
+                        .OrderBy(p => p);
 
                     if (englishDlls.Any())
                     {
@@ -184,7 +186,10 @@ namespace NuGetValidators.Localization
             }
             else
             {
-                return Directory.GetFiles(root, "NuGet.*.dll", SearchOption.TopDirectoryOnly);
+                return Directory.GetFiles(root, "*.dll", SearchOption.TopDirectoryOnly)
+                    .Where(f => Path.GetFileName(f).StartsWith("NuGet", StringComparison.OrdinalIgnoreCase) ||
+                                Path.GetFileName(f).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
             }
         }
 
