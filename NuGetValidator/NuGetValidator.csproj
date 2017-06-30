@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.3.3</Version>
+    <Version>1.3.7</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

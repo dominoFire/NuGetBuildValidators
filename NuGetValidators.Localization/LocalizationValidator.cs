@@ -155,6 +155,14 @@ namespace NuGetValidators.Localization
                 Console.WriteLine($"WARNING: LCI comments path '{lciCommentsDirPath}' in local TFS repo not found! "+
                     "The reults will not contain any locked strings and the non localized string count will be higher.");
             }
+            else
+            {
+                Console.WriteLine($"INFO: LCI Files found - ");
+                foreach (var file in Directory.GetFiles(lciCommentsDirPath))
+                {
+                    Console.WriteLine($"\t {file}");
+                }
+            }
         }
 
         private static string[] GetEnglishDlls(string root, bool isArtifacts = false)
@@ -168,8 +176,15 @@ namespace NuGetValidators.Localization
 
                 foreach (var dir in directories)
                 {
-                    var englishDlls = Directory.GetFiles(dir, Path.GetFileName(dir) + ".dll", SearchOption.AllDirectories)
-                        .Where(p => p.Contains("bin"))
+                    var expectedDllName = Path.GetFileName(dir) + ".dll";
+                    if (Path.GetFileName(dir).Equals("Microsoft.Web.Xdt.2.1.1"))
+                    {
+                        expectedDllName = "Microsoft.Web.XmlTransform.dll";
+                    }
+
+                    var englishDlls = Directory.GetFiles(dir, expectedDllName, SearchOption.AllDirectories)
+                        .Where(p => p.Contains("bin") || (Path.GetFileName(dir).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) && p.Contains("lib")))
+                        .Where(p => !p.Contains("ilmerge"))
                         .OrderBy(p => p);
 
                     if (englishDlls.Any())
@@ -178,7 +193,7 @@ namespace NuGetValidators.Localization
                     }
                     else
                     {
-                        Console.WriteLine($"WARNING: No matching NuGet dll found in {dir}");
+                        Console.WriteLine($"WARNING: No English dll matching the directory name was found in {dir}");
                     }
                 }
 
@@ -201,11 +216,15 @@ namespace NuGetValidators.Localization
 
         private static bool CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
         {
-            var lciFilePath = Path.Combine(lciCommentDirPath, Path.GetFileName(secondDll) + ".lci");
+            var lciFilePath = Path.Combine(lciCommentDirPath, Path.GetFileName(firstDll) + ".lci");
             XElement lciFile = null;
             if (File.Exists(lciFilePath))
             {
                 lciFile = XElement.Load(lciFilePath);
+            }
+            else
+            {
+                Console.WriteLine($"WARNING: No LCI file found at {lciFilePath}");
             }
 
             var result = true;
