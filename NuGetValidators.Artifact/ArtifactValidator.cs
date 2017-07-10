@@ -20,23 +20,27 @@ namespace NuGetValidators.Artifact
 
         public static int ExecuteForVsix(string VsixPath, string VsixExtractPath, string OutputPath)
         {
-            var result = 0;
             var vsixPath = VsixPath;
             var extractedVsixPath = VsixExtractPath;
             var logPath = OutputPath;
 
 
-            VsixUtility.CleanExtractedFiles(extractedVsixPath);
-            VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
+            //VsixUtility.CleanExtractedFiles(extractedVsixPath);
+            //VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
-
-            return result;
+            var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
+            return Execute(files);
         }
 
         public static int ExecuteForArtifacts(string artifactsDirectory)
         {
-            var result = 0;
             var files = FileUtility.GetDlls(artifactsDirectory, isArtifacts: true);
+            return Execute(files);
+        }
+
+        public static int Execute(string[] files)
+        {
+            var result = 0;
             var snExePath = GetSnExePath();
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };

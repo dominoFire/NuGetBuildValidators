@@ -2,7 +2,7 @@
   "profiles": {
     "NuGetValidator": {
       "commandName": "Project",
-      "commandLineArgs": "artifact -a \"C:\\Users\\anmishr\\Documents\\GitHub\\NuGet.Client\\artifacts\" -o \"C:\\Users\\anmishr\\Desktop\\temp\""
+      "commandLineArgs": "artifact --vsix-path \"C:\\Users\\anmishr\\Desktop\\temp\\NuGet.Tools.vsix\" --vsix-extract-path \"C:\\Users\\anmishr\\Desktop\\temp\\extraced\\NuGet.Tools.vsix\" --output-path \"C:\\Users\\anmishr\\Desktop\\temp\\logs\"  --vsix"
     }
   }
 }
