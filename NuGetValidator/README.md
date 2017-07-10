@@ -81,4 +81,4 @@ Things in flight, these instructions will be added soon....
 
 ## Output
 
-Output summary is displayed on the console. The tool generates multiple logs indicating different types of failures. The summry on the console displays the type of failure and the corresponding log file.
+Output summary is displayed on the console. The tool generates multiple logs indicating different types of failures. The summary on the console displays the type of failure and the corresponding log file.
