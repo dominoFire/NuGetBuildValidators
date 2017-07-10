@@ -1,4 +1,5 @@
-﻿using NuGetValidators.Utility;
+﻿using NuGetValidator.Utility;
+using NuGetValidators.Utility;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -63,7 +64,7 @@ namespace NuGetValidators.Localization
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
-            var englishDlls = GetEnglishDlls(extractedVsixPath);
+            var englishDlls = FileUtility.GetDlls(extractedVsixPath);
 
             Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
 
@@ -88,7 +89,7 @@ namespace NuGetValidators.Localization
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
-            var englishDlls = GetEnglishDlls(artifactsPath, isArtifacts: true);
+            var englishDlls = FileUtility.GetDlls(artifactsPath, isArtifacts: true);
 
             Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
 
@@ -162,49 +163,6 @@ namespace NuGetValidators.Localization
                 {
                     Console.WriteLine($"\t {file}");
                 }
-            }
-        }
-
-        private static string[] GetEnglishDlls(string root, bool isArtifacts = false)
-        {
-            if (isArtifacts)
-            {
-                var files = new List<string>();
-                var directories = Directory.GetDirectories(root)
-                    .Where(d => Path.GetFileName(d).StartsWith("NuGet", StringComparison.OrdinalIgnoreCase) ||
-                                Path.GetFileName(d).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase));
-
-                foreach (var dir in directories)
-                {
-                    var expectedDllName = Path.GetFileName(dir) + ".dll";
-                    if (Path.GetFileName(dir).Equals("Microsoft.Web.Xdt.2.1.1"))
-                    {
-                        expectedDllName = "Microsoft.Web.XmlTransform.dll";
-                    }
-
-                    var englishDlls = Directory.GetFiles(dir, expectedDllName, SearchOption.AllDirectories)
-                        .Where(p => p.Contains("bin") || (Path.GetFileName(dir).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) && p.Contains("lib")))
-                        .Where(p => !p.Contains("ilmerge"))
-                        .OrderBy(p => p);
-
-                    if (englishDlls.Any())
-                    {
-                        files.Add(englishDlls.First());
-                    }
-                    else
-                    {
-                        Console.WriteLine($"WARNING: No English dll matching the directory name was found in {dir}");
-                    }
-                }
-
-                return files.ToArray();
-            }
-            else
-            {
-                return Directory.GetFiles(root, "*.dll", SearchOption.TopDirectoryOnly)
-                    .Where(f => Path.GetFileName(f).StartsWith("NuGet", StringComparison.OrdinalIgnoreCase) ||
-                                Path.GetFileName(f).StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
             }
         }
 

@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\NuGetValidators.Artifact\NuGetValidators.Artifact.csproj" PrivateAssets="All" />
     <ProjectReference Include="..\NuGetValidators.Localization\NuGetValidators.Localization.csproj" PrivateAssets="All" />
   </ItemGroup>
 
@@ -36,7 +37,7 @@
   </Target>
 
 
-  <Target Name="ILMerge">
+  <Target Name="ILMerge" Condition="'$(BuildingInsideVisualStudio)' == 'False'">
     <PropertyGroup>
       <FinalOutputPath>$(MSBuildProjectDirectory)\$(OutputPath)</FinalOutputPath>
     </PropertyGroup>

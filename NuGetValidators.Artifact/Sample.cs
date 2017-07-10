@@ -12,9 +12,9 @@ namespace NuGetValidators.Artifact
         {
             var devVsixPath = @"E:\nuget.client\artifacts\VS14\NuGet.Tools.vsix";
             var migratedVsixPath = @"E:\nuget.client\artifacts\VS15\NuGet.Tools.vsix";
-            var artifactValidator = new ArtifactValidator();
-            //artifactValidator.ValidateSigning(@"C:\Users\anmishr\Desktop\Temp\EndToEnd");
-            artifactValidator.CompareVsix(devVsixPath, migratedVsixPath);
+            //var artifactValidator = new ArtifactValidator();
+            ////artifactValidator.ValidateSigning(@"C:\Users\anmishr\Desktop\Temp\EndToEnd");
+            //artifactValidator.CompareVsix(devVsixPath, migratedVsixPath);
         }
     }
 }

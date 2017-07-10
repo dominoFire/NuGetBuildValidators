@@ -1,16 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net45</TargetFramework>
+    <OutputType>library</OutputType>
+    <TargetFramework>net451</TargetFramework>
     <RootNamespace>NuGetValidator.Artifact</RootNamespace>
     <AssemblyName>NuGetValidator.Artifact</AssemblyName>
-    <PackageTags>semver;semantic versioning</PackageTags>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <AssemblyVersion>1.0.1</AssemblyVersion>
-    <AssemblyFileVersion>1.0.1</AssemblyFileVersion>
+    <IsTool>true</IsTool>
   </PropertyGroup>
-
+  <PropertyGroup>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <PackageVersion>$(Version)</PackageVersion>
+    <GeneratePackageOnBuild Condition="$(MergeLocValidator) == 'true'">true</GeneratePackageOnBuild>
+    <Authors>Ankit Mishra</Authors>
+    <Description>Package used internally in NuGet team's signing validation pipeline.</Description>
+    <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/mishra14/NuGetBuildValidators</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" />
   </ItemGroup>

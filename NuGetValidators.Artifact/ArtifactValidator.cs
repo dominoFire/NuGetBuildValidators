@@ -1,4 +1,5 @@
-﻿using NuGetValidators.Utility;
+﻿using NuGetValidator.Utility;
+using NuGetValidators.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace NuGetValidators.Artifact
 {
-    class ArtifactValidator
+    public static class ArtifactValidator
     {
         private const int _numberOfThreads = 1;
 
@@ -17,14 +18,26 @@ namespace NuGetValidators.Artifact
         //1. All files inside the artifacts location are strong name signed
         //2. New vsix has the same content as a reference vsix
 
-        public int ValidateSigning(string artifactsDirectory)
+        public static int ExecuteForVsix(string VsixPath, string VsixExtractPath, string OutputPath)
         {
             var result = 0;
-            var files = Directory.GetFiles(artifactsDirectory, "*.*", SearchOption.AllDirectories)
-                .Where(f => f.EndsWith("dll") )
-                .ToArray();
-            var snExePath = @"C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\sn.exe";
-            //var snExePath = GetSnExePath();
+            var vsixPath = VsixPath;
+            var extractedVsixPath = VsixExtractPath;
+            var logPath = OutputPath;
+
+
+            VsixUtility.CleanExtractedFiles(extractedVsixPath);
+            VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
+
+
+            return result;
+        }
+
+        public static int ExecuteForArtifacts(string artifactsDirectory)
+        {
+            var result = 0;
+            var files = FileUtility.GetDlls(artifactsDirectory, isArtifacts: true);
+            var snExePath = GetSnExePath();
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(files, ops, file =>
@@ -33,10 +46,11 @@ namespace NuGetValidators.Artifact
                 {
                     UseShellExecute = false,
                     FileName = snExePath,
-                    Arguments = $" -v {file}"
+                    Arguments = $" -v {file}",
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true
                 };
-                //Console.WriteLine("======================================================");
-                //Console.WriteLine($"{snExePath} -v {file}");
+
                 using (var process = new Process())
                 {
                     process.StartInfo = startInfo;
@@ -44,18 +58,21 @@ namespace NuGetValidators.Artifact
                     process.WaitForExit();
                     if (process.ExitCode != 0)
                     {
-
-                        Console.WriteLine($"Error in file '{file}'");
-
+                        result = 1;
+                        Console.WriteLine("======================================================");
+                        Console.WriteLine($"{snExePath} -v {file}");
+                        Console.WriteLine(process.StandardOutput.ReadToEnd());
+                        Console.WriteLine(process.StandardError.ReadToEnd());
+                        Console.WriteLine($"Error in file '{file}'. Sn exe returned exit code '{process.ExitCode}'");
+                        Console.WriteLine("======================================================");
                     }
                 }
-                //Console.WriteLine("======================================================");
             });
 
             return result;
         }
 
-        public int CompareVsix(string referenceVsix, string newVsix)
+        public static int CompareVsix(string referenceVsix, string newVsix)
         {
             int result = 0;
             Console.WriteLine("==========================================================");
@@ -84,7 +101,7 @@ namespace NuGetValidators.Artifact
             return result;
         }
 
-        private bool ValidateFileExists(string expectedFile)
+        private static bool ValidateFileExists(string expectedFile)
         {
             
             if (!File.Exists(expectedFile))
@@ -98,5 +115,9 @@ namespace NuGetValidators.Artifact
             }
         }
 
+        private static string GetSnExePath()
+        {
+            return @"C:\Users\anmishr\Documents\GitHub\NuGetBuildValidators\NuGetValidators.Artifact\sn.exe";
+        }
     }
 }

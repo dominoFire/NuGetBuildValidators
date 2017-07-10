@@ -81,6 +81,7 @@ namespace NuGetValidator
         {
             // Register commands
             LocalizationValidatorCommand.Register(app);
+            ArtifactValidatorCommand.Register(app);
         }
     }
 }
