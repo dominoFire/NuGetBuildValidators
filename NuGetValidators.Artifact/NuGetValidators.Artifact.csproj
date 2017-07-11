@@ -9,7 +9,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <GeneratePackageOnBuild Condition="$(MergeLocValidator) == 'true'">true</GeneratePackageOnBuild>
@@ -22,7 +22,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" />
-    <Content Include="$(MSBuildProjectDirectory)\sn.exe*">
+    <Content Include="$(MSBuildProjectDirectory)\sn*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -24,8 +24,8 @@ namespace NuGetValidators.Artifact
             var extractedVsixPath = VsixExtractPath;
             var logPath = OutputPath;
 
-            //VsixUtility.CleanExtractedFiles(extractedVsixPath);
-            //VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
+            VsixUtility.CleanExtractedFiles(extractedVsixPath);
+            VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
             return Execute(files);
@@ -68,6 +68,11 @@ namespace NuGetValidators.Artifact
                         Console.WriteLine(process.StandardError.ReadToEnd());
                         Console.WriteLine($"Error in file '{file}'. Sn exe returned exit code '{process.ExitCode}'");
                         Console.WriteLine("======================================================");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{snExePath} -v {file}");
+                        Console.WriteLine($"'{file}' verified");
                     }
                 }
             });
