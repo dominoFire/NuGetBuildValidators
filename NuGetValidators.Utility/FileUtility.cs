@@ -37,7 +37,7 @@ namespace NuGetValidator.Utility
                     }
                     else
                     {
-                        Console.WriteLine($"WARNING: No English dll matching the directory name was found in {dir}");
+                        Console.WriteLine($"WARNING: No dll matching the directory name was found in {dir}");
                     }
                 }
 

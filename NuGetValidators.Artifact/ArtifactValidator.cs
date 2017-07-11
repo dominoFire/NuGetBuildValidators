@@ -24,7 +24,6 @@ namespace NuGetValidators.Artifact
             var extractedVsixPath = VsixExtractPath;
             var logPath = OutputPath;
 
-
             //VsixUtility.CleanExtractedFiles(extractedVsixPath);
             //VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
@@ -121,7 +120,7 @@ namespace NuGetValidators.Artifact
 
         private static string GetSnExePath()
         {
-            return @"C:\Users\anmishr\Documents\GitHub\NuGetBuildValidators\NuGetValidators.Artifact\sn.exe";
+            return @"sn.exe";
         }
     }
 }

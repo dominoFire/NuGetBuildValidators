@@ -7,6 +7,7 @@
     <AssemblyName>NuGetValidator.Artifact</AssemblyName>
     <IsTool>true</IsTool>
   </PropertyGroup>
+  
   <PropertyGroup>
     <Version>1.1.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
@@ -18,8 +19,12 @@
     <PackageProjectUrl>https://github.com/mishra14/NuGetBuildValidators</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+  
   <ItemGroup>
     <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" />
+    <Content Include="$(MSBuildProjectDirectory)\sn.exe*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
-
+  
 </Project>

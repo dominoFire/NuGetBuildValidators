@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.3.7</Version>
+    <Version>1.3.8</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <GeneratePackageOnBuild Condition="$(MergeLocValidator) == 'true'">true</GeneratePackageOnBuild>
@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" PrivateAssets="All" />
+    <ProjectReference Include="..\NuGetValidators.Utility\NuGetValidators.Utility.csproj" />
   </ItemGroup>
 
   <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
