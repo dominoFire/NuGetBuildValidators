@@ -79,7 +79,7 @@ namespace NuGetValidator
                         }
                         else
                         {
-                            exitCode = ArtifactValidator.ExecuteForArtifacts(artifactsPath.Value());
+                            exitCode = ArtifactValidator.ExecuteForArtifacts(artifactsPath.Value(), outputPath.Value());
                         }
                     }
 

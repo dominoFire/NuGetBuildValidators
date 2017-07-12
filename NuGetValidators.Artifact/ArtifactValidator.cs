@@ -27,6 +27,9 @@ namespace NuGetValidators.Artifact
             VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
+
+            Console.WriteLine($"Total files: {files.Count()}");
+
             var result =  Execute(files);
             LogErrors(logPath);
 
@@ -38,6 +41,9 @@ namespace NuGetValidators.Artifact
             var logPath = OutputPath;
 
             var files = FileUtility.GetDlls(artifactsDirectory, isArtifacts: true);
+
+            Console.WriteLine($"Total files: {files.Count()}");
+
             var result = Execute(files);
             LogErrors(logPath);
 
@@ -66,11 +72,13 @@ namespace NuGetValidators.Artifact
                 if (strongNameVerificationResult != 0)
                 {
                     result = 1;
+                    AddToStrongNameFailures(file);
                 }
 
                 if (authentiCodeVerificationResult != AuthentiCode.Result.Success)
                 {
                     result = 1;
+                    AddToAuthentiCodeFailures(file, authentiCodeVerificationResult, AuthentiCode.GetResultString(authentiCodeVerificationResult));
                 }
 
             });
