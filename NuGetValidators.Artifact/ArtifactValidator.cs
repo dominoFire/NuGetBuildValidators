@@ -1,7 +1,10 @@
 ﻿using NuGetValidators.Utility;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace NuGetValidators.Artifact
@@ -9,10 +12,10 @@ namespace NuGetValidators.Artifact
     public static class ArtifactValidator
     {
         private const int _numberOfThreads = 1;
-
-        // Types of validation - 
-        //1. All files inside the artifacts location are strong name signed
-        //2. New vsix has the same content as a reference vsix
+        private static IDictionary<string, Tuple<AuthentiCode.Result, string>> AuthentiCodeFailures = new Dictionary<string, Tuple<AuthentiCode.Result, string>>();
+        private static IList<string> StrongNameFailures = new List<string>();
+        private static object AuthentiCodeFailuresCollectionLock = new object();
+        private static object StrongNameFailuresCollectionLock = new object();
 
         public static int ExecuteForVsix(string VsixPath, string VsixExtractPath, string OutputPath)
         {
@@ -24,23 +27,33 @@ namespace NuGetValidators.Artifact
             VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
-            return Execute(files);
+            var result =  Execute(files);
+            LogErrors(logPath);
+
+            return result;
         }
 
-        public static int ExecuteForArtifacts(string artifactsDirectory)
+        public static int ExecuteForArtifacts(string artifactsDirectory, string OutputPath)
         {
+            var logPath = OutputPath;
+
             var files = FileUtility.GetDlls(artifactsDirectory, isArtifacts: true);
-            return Execute(files);
+            var result = Execute(files);
+            LogErrors(logPath);
+
+            return result;
         }
 
+        // Types of validation - 
+        //1. All files inside the artifacts location are strong name signed
+        //2. All files inside the artifacts location are authenticode certified
         public static int Execute(string[] files)
         {
             var result = 0;
-            
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(files, ops, file =>
-            {                
+            {
                 Console.WriteLine($"Validating: {file} ");
                 Console.WriteLine($"\t Verifying StongName...");
                 var strongNameVerificationResult = VerifyStrongName(file);
@@ -50,7 +63,12 @@ namespace NuGetValidators.Artifact
                 var authentiCodeVerificationResult = VerifyAuthentiCode(file);
                 Console.WriteLine($"\t AuthentiCode Verification: {AuthentiCode.GetResultString(authentiCodeVerificationResult)}\n");
 
-                if (strongNameVerificationResult != 0 || authentiCodeVerificationResult != AuthentiCode.Result.Success)
+                if (strongNameVerificationResult != 0)
+                {
+                    result = 1;
+                }
+
+                if (authentiCodeVerificationResult != AuthentiCode.Result.Success)
                 {
                     result = 1;
                 }
@@ -143,7 +161,6 @@ namespace NuGetValidators.Artifact
 
         private static bool ValidateFileExists(string expectedFile)
         {
-            
             if (!File.Exists(expectedFile))
             {
                 Console.WriteLine($"ERROR: File '{Path.GetFileName(expectedFile)}' does not exist at expected path '{expectedFile}'");
@@ -152,6 +169,122 @@ namespace NuGetValidators.Artifact
             else
             {
                 return true;
+            }
+        }
+
+        private static void AddToAuthentiCodeFailures(string file, AuthentiCode.Result result, string error)
+        {
+            lock (AuthentiCodeFailuresCollectionLock)
+            {
+                AuthentiCodeFailures[file] = new Tuple<AuthentiCode.Result, string>(result, error);
+            }
+        }
+
+        private static void AddToStrongNameFailures(string file)
+        {
+            lock (StrongNameFailuresCollectionLock)
+            {
+                StrongNameFailures.Add(file);
+            }
+        }
+
+        private static void LogErrors(string logPath)
+        {
+            if (!Directory.Exists(logPath))
+            {
+                Console.WriteLine($"INFO: Creating new Director for logs at '{logPath}'");
+                Directory.CreateDirectory(logPath);
+            }
+
+            LogErrors(logPath,
+                AuthentiCodeFailures,
+                "AuthentiCode_Failures",
+                "These Files had invalid/expired/none/wrong AuthentiCode certificate.");
+
+            LogErrors(logPath,
+                StrongNameFailures,
+                "StrongName_Failures",
+                "These Files had invalid/none StrongName.");
+        }
+
+        private static void LogErrors(string logPath, 
+            IDictionary<string, Tuple<AuthentiCode.Result, string>> collection, 
+            string logFileName, 
+            string logDescription)
+        {
+            if (collection.Keys.Any())
+            {
+                var path = Path.Combine(logPath, logFileName + ".txt");
+
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error: {logDescription}");
+                Console.WriteLine($"Failure count: {collection.Keys.Count}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    foreach (var file in collection.Keys)
+                    {
+                        var line = new StringBuilder();
+                        line.Append($"File: {file}");
+                        line.Append(Environment.NewLine);
+                        line.Append($"Exit Code: {collection[file].Item1}");
+                        line.Append(Environment.NewLine);
+                        line.Append($"File: {collection[file].Item2}");
+                        line.Append(Environment.NewLine);
+                        line.Append(Environment.NewLine);
+
+                        w.WriteLine(line.ToString());
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error: {logDescription}");
+                Console.WriteLine($"Failure count: {collection.Count}");
+                Console.WriteLine("================================================================================================================");
+            }
+        }
+
+        private static void LogErrors(string logPath, 
+            IList<string> collection,
+            string logFileName,
+            string logDescription)
+        {
+            if (collection.Any())
+            {
+                var path = Path.Combine(logPath, logFileName + ".txt");
+
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error: {logDescription}");
+                Console.WriteLine($"Failure count: {collection.Count}");
+                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine("================================================================================================================");
+
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                using (StreamWriter w = File.AppendText(path))
+                {
+                    foreach (var file in collection)
+                    {
+                        w.WriteLine($"File: {file}");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("================================================================================================================");
+                Console.WriteLine($"Error: {logDescription}");
+                Console.WriteLine($"Failure count: {collection.Count}");
+                Console.WriteLine("================================================================================================================");
             }
         }
 
