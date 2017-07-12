@@ -1,11 +1,7 @@
 ﻿using NuGetValidators.Utility;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace NuGetValidators.Artifact
@@ -46,24 +42,17 @@ namespace NuGetValidators.Artifact
             Parallel.ForEach(files, ops, file =>
             {                
                 Console.WriteLine($"Validating: {file} ");
-
                 Console.WriteLine($"\t Verifying StongName...");
-
-                var strongNameVerified = VerifyStrongName(file);
-
-                Console.WriteLine($"\t StongName Verified: {strongNameVerified}" + 
-                    Environment.NewLine);
-
+                var strongNameVerificationResult = VerifyStrongName(file);
+                Console.WriteLine($"\t StongName Verification: {GetStringNameResultString(strongNameVerificationResult)}\n");
 
                 Console.WriteLine($"\t Verifying AuthentiCode...");
+                var authentiCodeVerificationResult = VerifyAuthentiCode(file);
+                Console.WriteLine($"\t AuthentiCode Verification: {AuthentiCode.GetResultString(authentiCodeVerificationResult)}\n");
 
-                var authentiCodeVerified = VerifyAuthentiCode(file);
-
-                Console.WriteLine($"\t AuthentiCode Verified: {authentiCodeVerified}" + 
-                    Environment.NewLine);
-                if (authentiCodeVerified != 0)
+                if (strongNameVerificationResult != 0 || authentiCodeVerificationResult != AuthentiCode.Result.Success)
                 {
-                    Console.WriteLine($"\t AuthentiCode Error: {AuthentiCode.GetResultString((AuthentiCode.Result)authentiCodeVerified)}");
+                    result = 1;
                 }
 
             });
@@ -94,8 +83,22 @@ namespace NuGetValidators.Artifact
                 {
                     result = 1;
                     Console.WriteLine($"\t\t {snExePath} -v {file}");
-                    Console.WriteLine($"\t\t {process.StandardOutput.ReadToEnd()}");
-                    Console.WriteLine($"\t\t {process.StandardError.ReadToEnd()}");
+
+                    foreach (var line in process.StandardOutput.ReadToEnd()?.Split('\n'))
+                    {
+                        if (!(string.IsNullOrEmpty(line) || string.IsNullOrWhiteSpace(line)))
+                        {
+                            Console.WriteLine($"\t\t {line}");
+                        }
+                    }
+
+                    foreach (var line in process.StandardError.ReadToEnd()?.Split('\n'))
+                    {
+                        if (!(string.IsNullOrEmpty(line) || string.IsNullOrWhiteSpace(line)))
+                        {
+                            Console.WriteLine($"\t\t {line}");
+                        }
+                    }
                     Console.WriteLine($"\t\t Exit Code: {process.ExitCode}");
                 }
             }
@@ -103,10 +106,10 @@ namespace NuGetValidators.Artifact
             return result;
         }
 
-        private static int VerifyAuthentiCode(string file)
+        private static AuthentiCode.Result VerifyAuthentiCode(string file)
         {
-            var result = AuthentiCode.Verify(file, displayCertMetadata: true);
-            return (int)result;
+            var result = AuthentiCode.Verify(file, displayCertMetadata: false);
+            return result;
         }
 
         public static int CompareVsix(string referenceVsix, string newVsix)
@@ -155,6 +158,18 @@ namespace NuGetValidators.Artifact
         private static string GetSnExePath()
         {
             return @"sn.exe";
+        }
+
+        private static string GetStringNameResultString(int result)
+        {
+            if (result == 0)
+            {
+                return "SUCCESS - The StrongName was successfully verified.";
+            }
+            else
+            {
+                return "FAILED - Invalid StrongName.";
+            }
         }
     }
 }

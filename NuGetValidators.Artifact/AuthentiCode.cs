@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NuGetValidators.Artifact
 {
@@ -13,13 +10,13 @@ namespace NuGetValidators.Artifact
         private static readonly string MsftIssuerId = "Microsoft Code Signing PCA";
         private static IList<string> ResultString = new List<string>
         {
-            "The Certificate was successfully verified.",
-            "The Certificate is Null.",
-            "X509Certificate2.Verify() failed on the Certificate.",
-            "The Certificate is Archived.",
-            "The Certificate is not effective yet.",
-            "The Certificate has expired.",
-            "The Certificate issuer does not match Microsoft."
+            "SUCCESS - The Certificate was successfully verified.",
+            "FAILED - The Certificate is Null.",
+            "FAILED - X509Certificate2.Verify() failed on the Certificate.",
+            "FAILED - The Certificate is Archived.",
+            "FAILED - The Certificate is not effective yet.",
+            "FAILED - The Certificate has expired.",
+            "FAILED - The Certificate issuer does not match Microsoft."
         };
 
         /// <summary>

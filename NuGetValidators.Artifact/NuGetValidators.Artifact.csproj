@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>exe</OutputType>
+    <OutputType>library</OutputType>
     <TargetFramework>net451</TargetFramework>
     <RootNamespace>NuGetValidators.Artifact</RootNamespace>
     <AssemblyName>NuGetValidators.Artifact</AssemblyName>
@@ -9,7 +9,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <GeneratePackageOnBuild Condition="$(MergeLocValidator) == 'true'">true</GeneratePackageOnBuild>
