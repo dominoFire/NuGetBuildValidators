@@ -2,7 +2,7 @@
   "profiles": {
     "NuGetValidator": {
       "commandName": "Project",
-      "commandLineArgs": "artifact --vsix-path \"C:\\Users\\anmishr\\Desktop\\temp\\NuGet.Tools.vsix\" --vsix-extract-path \"C:\\Users\\anmishr\\Desktop\\temp\\extraced\\NuGet.Tools.vsix\" --output-path \"C:\\Users\\anmishr\\Desktop\\temp\\logs\"  --vsix"
+      "commandLineArgs": "artifact --vsix-path \"E:\\nuget.client\\artifacts\\VS15\\NuGet.Tools.vsix\" --vsix-extract-path F:\\validation\\NuGetValidators.Artifact\\extracted_local --output-path F:\\validation\\NuGetValidators.Artifact\\vsix  --vsix"
     }
   }
 }

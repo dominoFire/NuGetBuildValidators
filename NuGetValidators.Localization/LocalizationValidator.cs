@@ -1,5 +1,4 @@
-﻿using NuGetValidator.Utility;
-using NuGetValidators.Utility;
+﻿using NuGetValidators.Utility;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;

@@ -1,11 +1,11 @@
-﻿using NuGetValidator.Utility;
-using NuGetValidators.Utility;
+﻿using NuGetValidators.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace NuGetValidators.Artifact
@@ -40,44 +40,73 @@ namespace NuGetValidators.Artifact
         public static int Execute(string[] files)
         {
             var result = 0;
-            var snExePath = GetSnExePath();
+            
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(files, ops, file =>
-            {
-                var startInfo = new ProcessStartInfo
-                {
-                    UseShellExecute = false,
-                    FileName = snExePath,
-                    Arguments = $" -v {file}",
-                    RedirectStandardError = true,
-                    RedirectStandardOutput = true
-                };
+            {                
+                Console.WriteLine($"Validating: {file} ");
 
-                using (var process = new Process())
+                Console.WriteLine($"\t Verifying StongName...");
+
+                var strongNameVerified = VerifyStrongName(file);
+
+                Console.WriteLine($"\t StongName Verified: {strongNameVerified}" + 
+                    Environment.NewLine);
+
+
+                Console.WriteLine($"\t Verifying AuthentiCode...");
+
+                var authentiCodeVerified = VerifyAuthentiCode(file);
+
+                Console.WriteLine($"\t AuthentiCode Verified: {authentiCodeVerified}" + 
+                    Environment.NewLine);
+                if (authentiCodeVerified != 0)
                 {
-                    process.StartInfo = startInfo;
-                    process.Start();
-                    process.WaitForExit();
-                    if (process.ExitCode != 0)
-                    {
-                        result = 1;
-                        Console.WriteLine("======================================================");
-                        Console.WriteLine($"{snExePath} -v {file}");
-                        Console.WriteLine(process.StandardOutput.ReadToEnd());
-                        Console.WriteLine(process.StandardError.ReadToEnd());
-                        Console.WriteLine($"Error in file '{file}'. Sn exe returned exit code '{process.ExitCode}'");
-                        Console.WriteLine("======================================================");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"{snExePath} -v {file}");
-                        Console.WriteLine($"'{file}' verified");
-                    }
+                    Console.WriteLine($"\t AuthentiCode Error: {AuthentiCode.GetResultString((AuthentiCode.Result)authentiCodeVerified)}");
                 }
+
             });
 
             return result;
+        }
+
+        private static int VerifyStrongName(string file)
+        {
+            var result = 0;
+            var snExePath = GetSnExePath();
+
+            var startInfo = new ProcessStartInfo
+            {
+                UseShellExecute = false,
+                FileName = snExePath,
+                Arguments = $" -v {file}",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
+
+            using (var process = new Process())
+            {
+                process.StartInfo = startInfo;
+                process.Start();
+                process.WaitForExit();
+                if (process.ExitCode != 0)
+                {
+                    result = 1;
+                    Console.WriteLine($"\t\t {snExePath} -v {file}");
+                    Console.WriteLine($"\t\t {process.StandardOutput.ReadToEnd()}");
+                    Console.WriteLine($"\t\t {process.StandardError.ReadToEnd()}");
+                    Console.WriteLine($"\t\t Exit Code: {process.ExitCode}");
+                }
+            }
+
+            return result;
+        }
+
+        private static int VerifyAuthentiCode(string file)
+        {
+            var result = AuthentiCode.Verify(file, displayCertMetadata: true);
+            return (int)result;
         }
 
         public static int CompareVsix(string referenceVsix, string newVsix)

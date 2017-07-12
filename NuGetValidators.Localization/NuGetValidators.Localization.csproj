@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>library</OutputType>
     <TargetFramework>net451</TargetFramework>
-    <RootNamespace>NuGetValidator.Localization</RootNamespace>
-    <AssemblyName>NuGetValidator.Localization</AssemblyName>
+    <RootNamespace>NuGetValidators.Localization</RootNamespace>
+    <AssemblyName>NuGetValidators.Localization</AssemblyName>
     <IsTool>true</IsTool>
   </PropertyGroup>
 

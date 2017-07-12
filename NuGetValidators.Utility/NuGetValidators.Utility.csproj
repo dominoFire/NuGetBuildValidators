@@ -3,8 +3,8 @@
   
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
-    <RootNamespace>NuGetValidator.Utility</RootNamespace>
-    <AssemblyName>NuGetValidator.Utility</AssemblyName>
+    <RootNamespace>NuGetValidators.Utility</RootNamespace>
+    <AssemblyName>NuGetValidators.Utility</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>

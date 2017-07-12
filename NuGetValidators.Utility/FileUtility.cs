@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NuGetValidator.Utility
+namespace NuGetValidators.Utility
 {
     public class FileUtility
     {
