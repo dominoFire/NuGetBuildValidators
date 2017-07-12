@@ -63,11 +63,9 @@ namespace NuGetValidators.Localization
             //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
             //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
 
-            var englishDlls = FileUtility.GetDlls(extractedVsixPath);
+            var englishDlls = FileUtility.GetDlls(extractedVsixPath);            
 
-            Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
-
-            ExecuteForAllEnglishDlls(lciCommentsDirPath, englishDlls);
+            Execute(lciCommentsDirPath, englishDlls);
 
             LogErrors(logPath);
 
@@ -90,60 +88,92 @@ namespace NuGetValidators.Localization
 
             var englishDlls = FileUtility.GetDlls(artifactsPath, isArtifacts: true);
 
-            Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
-
-            ExecuteForAllEnglishDlls(lciCommentsDirPath, englishDlls);
+            Execute(lciCommentsDirPath, englishDlls);
 
             LogErrors(logPath);
 
             return GetReturnCode();
         }
 
-        private static void ExecuteForAllEnglishDlls(string lciCommentsDirPath, string[] englishDlls)
+        public static int ExecuteForFiles(IList<string> Files, string OutputPath, string CommentsPath)
         {
+            var files = Files;
+            var logPath = OutputPath;
+            var lciCommentsDirPath = CommentsPath;
+
+            WarnIfTFSRepoNotPresent(lciCommentsDirPath);
+
+            // For Testing
+            //var vsixPath = @"\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix";
+            //var extractedVsixPath = @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\";
+            //var logPath = @"\\nuget\NuGet\Share\ValidationTemp";
+            //var englishDlls = new string[] { @"\\nuget\NuGet\Share\ValidationTemp\NuGet.Tools.Vsix\NuGet.Options.dll" };
+
+            Execute(lciCommentsDirPath, files.ToArray());
+
+            LogErrors(logPath);
+
+            return GetReturnCode();
+        }
+
+        private static void Execute(string lciCommentsDirPath, string[] englishDlls)
+        {
+            Console.WriteLine($"Total English Dlls: {englishDlls.Count()}");
+
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
             {
-                if (DoesDllContainResourceStrings(englishDll))
+                if (!File.Exists(englishDll))
                 {
-
-                    var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll)
-                        .ToList();
-
-                    Console.WriteLine($"Validating: {englishDll} "+
-                        Environment.NewLine +
-                        $"\t Contains resource strings: True" +
-                        Environment.NewLine +
-                        $"\t Translated dlls: {translatedDlls.Count()}" +
-                        Environment.NewLine);
-
-                    // Add translated dlls into a collection to filter out localized dlls
-                    AddToCollection(_localizedDlls,
-                        Path.GetFileName(englishDll));
-
-                    foreach (var translatedDll in translatedDlls)
-                    {
-                        try
-                        {
-                            // Add translated dlls into a collection to filter out localized dlls
-                            AddToCollection(_localizedDlls,
-                                Path.GetFileName(englishDll),
-                                Directory.GetParent(translatedDll).Name);
-
-                            CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
-                        }
-                    }
+                    Console.WriteLine($"File Not Found: {englishDll}");
+                }
+                else if (!englishDll.EndsWith(".dll") && !englishDll.EndsWith(".exe"))
+                {
+                    Console.WriteLine($"File Not a dll/exe: {englishDll}\n");
                 }
                 else
                 {
-                    Console.WriteLine($"Validating: {englishDll} " +
-                        Environment.NewLine +
-                        $"\t Contains resource strings: False" +
-                        Environment.NewLine);
+                    if (DoesDllContainResourceStrings(englishDll))
+                    {
+
+                        var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll)
+                            .ToList();
+
+                        Console.WriteLine($"Validating: {englishDll} " +
+                            Environment.NewLine +
+                            $"\t Contains resource strings: True" +
+                            Environment.NewLine +
+                            $"\t Translated dlls: {translatedDlls.Count()}" +
+                            Environment.NewLine);
+
+                        // Add translated dlls into a collection to filter out localized dlls
+                        AddToCollection(_localizedDlls,
+                            Path.GetFileName(englishDll));
+
+                        foreach (var translatedDll in translatedDlls)
+                        {
+                            try
+                            {
+                                // Add translated dlls into a collection to filter out localized dlls
+                                AddToCollection(_localizedDlls,
+                                    Path.GetFileName(englishDll),
+                                    Directory.GetParent(translatedDll).Name);
+
+                                CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Validating: {englishDll} " +
+                            Environment.NewLine +
+                            $"\t Contains resource strings: False" +
+                            Environment.NewLine);
+                    }
                 }
             });
         }

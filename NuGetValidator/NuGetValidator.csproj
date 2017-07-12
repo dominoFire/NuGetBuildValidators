@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.4.0</Version>
+    <Version>1.4.0.3</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <GeneratePackageOnBuild Condition=" '$(MergeAndPack)' == 'true' ">true</GeneratePackageOnBuild>
@@ -39,7 +39,6 @@
       <PackagePath>tools\</PackagePath>
     </Content>
   </ItemGroup>
-
 
   <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="ILMerge" />

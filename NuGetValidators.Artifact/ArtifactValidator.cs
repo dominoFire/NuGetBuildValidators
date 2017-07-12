@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace NuGetValidators.Artifact
 {
     public static class ArtifactValidator
     {
-        private const int _numberOfThreads = 1;
+        private const int _numberOfThreads = 1; // Currently this needs to be one else logs are mangled.
         private static IDictionary<string, Tuple<AuthentiCode.Result, string>> AuthentiCodeFailures = new Dictionary<string, Tuple<AuthentiCode.Result, string>>();
         private static IList<string> StrongNameFailures = new List<string>();
         private static object AuthentiCodeFailuresCollectionLock = new object();
@@ -28,8 +29,6 @@ namespace NuGetValidators.Artifact
 
             var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
 
-            Console.WriteLine($"Total files: {files.Count()}");
-
             var result =  Execute(files);
             LogErrors(logPath);
 
@@ -42,9 +41,17 @@ namespace NuGetValidators.Artifact
 
             var files = FileUtility.GetDlls(artifactsDirectory, isArtifacts: true);
 
-            Console.WriteLine($"Total files: {files.Count()}");
-
             var result = Execute(files);
+            LogErrors(logPath);
+
+            return result;
+        }
+
+        public static int ExecuteForFiles(IList<string> files, string OutputPath)
+        {
+            var logPath = OutputPath;
+
+            var result = Execute(files.ToArray());
             LogErrors(logPath);
 
             return result;
@@ -55,32 +62,61 @@ namespace NuGetValidators.Artifact
         //2. All files inside the artifacts location are authenticode certified
         public static int Execute(string[] files)
         {
+            Console.WriteLine($"Total files: {files.Count()}");
             var result = 0;
 
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(files, ops, file =>
             {
-                Console.WriteLine($"Validating: {file} ");
-                Console.WriteLine($"\t Verifying StongName...");
-                var strongNameVerificationResult = VerifyStrongName(file);
-                Console.WriteLine($"\t StongName Verification: {GetStringNameResultString(strongNameVerificationResult)}\n");
-
-                Console.WriteLine($"\t Verifying AuthentiCode...");
-                var authentiCodeVerificationResult = VerifyAuthentiCode(file);
-                Console.WriteLine($"\t AuthentiCode Verification: {AuthentiCode.GetResultString(authentiCodeVerificationResult)}\n");
-
-                if (strongNameVerificationResult != 0)
+                if (!File.Exists(file))
                 {
-                    result = 1;
-                    AddToStrongNameFailures(file);
+                    Console.WriteLine($"File Not Found: {file}");
                 }
-
-                if (authentiCodeVerificationResult != AuthentiCode.Result.Success)
+                else if (!file.EndsWith(".dll") && !file.EndsWith(".exe"))
                 {
-                    result = 1;
-                    AddToAuthentiCodeFailures(file, authentiCodeVerificationResult, AuthentiCode.GetResultString(authentiCodeVerificationResult));
+                    Console.WriteLine($"File Not a dll/exe: {file}\n");
                 }
+                else
+                {
+                    Console.WriteLine($"Validating: {file} ");
+                    Console.WriteLine($"\t Verifying StongName...");
+                    var strongNameVerificationResult = VerifyStrongName(file);
+                    Console.WriteLine($"\t StongName Verification: {GetStringNameResultString(strongNameVerificationResult)}\n");
 
+                    Console.WriteLine($"\t Verifying AuthentiCode...");
+                    var authentiCodeVerificationResult = VerifyAuthentiCode(file);
+                    Console.WriteLine($"\t AuthentiCode Verification: {AuthentiCode.GetResultString(authentiCodeVerificationResult)}\n");
+
+                    if (strongNameVerificationResult != 0)
+                    {
+                        result = 1;
+                        AddToStrongNameFailures(file);
+                    }
+
+                    if (authentiCodeVerificationResult != AuthentiCode.Result.Success)
+                    {
+                        var resultString = AuthentiCode.GetResultString(authentiCodeVerificationResult);
+
+                        // If X509Certificate.Verify() failed then get a chain to get the reason for failure.
+                        if (authentiCodeVerificationResult == AuthentiCode.Result.VerifyFailed)
+                        {
+                            var chain = new X509Chain();
+                            var chainBuilt = chain.Build(AuthentiCode.GetCertificate(file));
+                            if (chainBuilt == false)
+                            {
+                                var chainStatus = chain.ChainStatus.FirstOrDefault();
+                                resultString = chainStatus.StatusInformation;
+                            }
+                            else
+                            {
+                                resultString = "X509Certificate.Verify() failed, but chain built fine.";
+                            }
+                        }
+
+                        result = 1;
+                        AddToAuthentiCodeFailures(file, authentiCodeVerificationResult, resultString);
+                    }
+                }
             });
 
             return result;

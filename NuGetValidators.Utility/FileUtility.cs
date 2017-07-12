@@ -51,5 +51,47 @@ namespace NuGetValidators.Utility
                     .ToArray();
             }
         }
+
+        /// <summary>
+        /// Split on chars and trim. Null or empty inputs will return an empty list.
+        /// </summary>
+        public static IList<string> Split(string s, params char[] chars)
+        {
+            if (!string.IsNullOrEmpty(s))
+            {
+                // Split on chars and trim all entries
+                // After trimming remove any entries that are now empty due to trim.
+                return s.Trim()
+                    .Split(chars)
+                    .Select(entry => entry.Trim())
+                    .Where(entry => entry.Length != 0)
+                    .ToList();
+            }
+            else
+            {
+                return Enumerable.Empty<string>()
+                    .ToList();
+            }
+        }
+
+        public static IList<string> ReadFilesFromFile(string file)
+        {
+            var fileList = Enumerable.Empty<string>()
+                .ToList();
+
+            if (!string.IsNullOrEmpty(file) && File.Exists(file))
+            {
+                using (StreamReader sr = File.OpenText(file))
+                {
+                    var s = String.Empty;
+                    while ((s = sr.ReadLine()) != null)
+                    {
+                        fileList.Add(s);
+                    }
+                }
+            }
+
+            return fileList;
+        }
     }
 }
