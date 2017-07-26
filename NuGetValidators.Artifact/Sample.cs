@@ -10,11 +10,8 @@ namespace NuGetValidators.Artifact
     {
         public static void Main(string[] args)
         {
-            var devVsixPath = @"E:\nuget.client\artifacts\VS14\NuGet.Tools.vsix";
-            var migratedVsixPath = @"E:\nuget.client\artifacts\VS15\NuGet.Tools.vsix";
-            var artifactValidator = new ArtifactValidator();
-            //artifactValidator.ValidateSigning(@"C:\Users\anmishr\Desktop\Temp\EndToEnd");
-            artifactValidator.CompareVsix(devVsixPath, migratedVsixPath);
+            var cert = AuthentiCode.GetCertificate(@"F:\validation\NuGetValidators.Artifact\extracted\NuGet.Commands.dll");
+            AuthentiCode.Verify(cert, displayCertMetadata: true);
         }
     }
 }

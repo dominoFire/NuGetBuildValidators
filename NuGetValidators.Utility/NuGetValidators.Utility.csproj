@@ -3,12 +3,12 @@
   
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
-    <RootNamespace>NuGetValidator.Utility</RootNamespace>
-    <AssemblyName>NuGetValidator.Utility</AssemblyName>
+    <RootNamespace>NuGetValidators.Utility</RootNamespace>
+    <AssemblyName>NuGetValidators.Utility</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageVersion>1.2.0</PackageVersion>
+    <PackageVersion>1.2.2</PackageVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
