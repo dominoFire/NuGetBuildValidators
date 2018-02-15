@@ -28,7 +28,7 @@ param (
 Write-Host ("`r`n" * 3)
 Trace-Log ('=' * 60)
 
-$MSBuildExe = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\bin\\msbuild.exe"
+$MSBuildExe = msbuild
 $startTime = [DateTime]::UtcNow
 $BuildErrors = @()
 

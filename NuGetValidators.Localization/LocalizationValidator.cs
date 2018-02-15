@@ -182,7 +182,7 @@ namespace NuGetValidators.Localization
         {
             if (!Directory.Exists(lciCommentsDirPath))
             {
-                Console.WriteLine($"WARNING: LCI comments path '{lciCommentsDirPath}' in local TFS repo not found! "+
+                Console.WriteLine($"WARNING: LCI comments path '{lciCommentsDirPath}' not found in local git repo! "+
                     "The reults will not contain any locked strings and the non localized string count will be higher.");
             }
             else
@@ -259,10 +259,10 @@ namespace NuGetValidators.Localization
                             }
                         }
 
-                        var secodResourceFullName = secondAssemblyResourceFullNames
+                        var secondResourceFullName = secondAssemblyResourceFullNames
                             .First(r => r.StartsWith(GetResourceNameFromFullName(firstAssemblyResourceFullName)));
 
-                        var secondResource = GetResourceFromAssembly(secodResourceFullName, 
+                        var secondResource = GetResourceFromAssembly(secondResourceFullName, 
                             firstResourceSetEnumerator.Key as string, 
                             secondAssembly);
 
@@ -309,8 +309,7 @@ namespace NuGetValidators.Localization
 
         private static bool IsResourceStringURIOrNonAlphabetical(string resourceKey, IDictionaryEnumerator resourceSetEnumerator)
         {
-            Uri uriResult;
-            if ((Uri.TryCreate((resourceSetEnumerator.Value as string), UriKind.Absolute, out uriResult) &&
+            if ((Uri.TryCreate((resourceSetEnumerator.Value as string), UriKind.Absolute, out Uri uriResult) &&
                 (uriResult.Scheme == Uri.UriSchemeHttp)) ||
                 (resourceSetEnumerator.Value as string).All(c => !char.IsLetter(c)))
             {
@@ -390,14 +389,14 @@ namespace NuGetValidators.Localization
                 if (type.Contains("Locked"))
                 {
                     var subStrings = comments.Split(',');
-                    subStrings.ToList().ForEach(s => lockedSubStrings.Add(CleanedUpLockedStrings(s.Trim())));
+                    subStrings.ToList().ForEach(s => lockedSubStrings.Add(CleanLockedString(s.Trim())));
 
                 }
             }
             return lockedSubStrings;
         }
 
-        private static string CleanedUpLockedStrings(string lockedString)
+        private static string CleanLockedString(string lockedString)
         {
             if (lockedString.EndsWith("}"))
             {
@@ -636,38 +635,38 @@ namespace NuGetValidators.Localization
         {
             if (!Directory.Exists(logPath))
             {
-                Console.WriteLine($"INFO: Creating new Director for logs at '{logPath}'");
+                Console.WriteLine($"INFO: Creating new directory for logs at '{logPath}'");
                 Directory.CreateDirectory(logPath);
             }
 
             LogErrors(logPath, 
                 _nonLocalizedStringErrors, 
-                "Not_Localized_Strings", 
+                "NotLocalizedStrings", 
                 "These Strings are same as English strings.");
 
             LogErrors(logPath, 
                 _misMatcherrors, 
-                "Mismatch_Strings", 
-                "These Strings do not contain the same number of place holders as the English strings.");
+                "MismatchStrings", 
+                "These Strings do not contain the same number of placeholders as the English strings.");
 
             LogErrors(logPath, 
                 _missingLocalizedErrors, 
-                "Missing_Strings", 
-                "These Strings are missing in the localized resources.");
+                "MissingStrings", 
+                "These Strings are missing in the localized dlls.");
 
             LogErrors(logPath,
                 _lockedStrings,
-                "Locked_Strings",
+                "LockedStrings",
                 "These are wholly locked or contain a locked sub string.");
 
             LogCollectionToXslt(logPath,
                 _nonLocalizedStringErrorsDeduped,
-                "Not_Localized_Strings_Deduped",
+                "NotLocalizedStringsUnique",
                 "These Strings are same as English strings.");
 
             LogCollectionToXslt(logPath,
                 _localizedDlls,
-                "Not_Localized_Dlls_Deduped",
+                "NotLocalizedDllUnique",
                 "These Dlls have not been localized.");
         }
 
@@ -681,9 +680,9 @@ namespace NuGetValidators.Localization
                 var path = Path.Combine(logPath, errorType + ".txt");
 
                 Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Error Type: {errorType} - {errorDescription}");
-                Console.WriteLine($"Total error count: {errors.Count()}");
-                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine($"Type: {errorType} - {errorDescription}");
+                Console.WriteLine($"Total count: {errors.Count()}");
+                Console.WriteLine($"Logged at: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
@@ -711,9 +710,9 @@ namespace NuGetValidators.Localization
                 var path = Path.Combine(logPath, logFileName + ".csv");
 
                 Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Type: {logFileName} - {logDescription}");
                 Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
-                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine($"Logged at: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
@@ -755,9 +754,9 @@ namespace NuGetValidators.Localization
                 var path = Path.Combine(logPath, logFileName + ".csv");
 
                 Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Type: {logFileName} - {logDescription}");
                 Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Count()}");
-                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine($"Logged at: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
@@ -798,8 +797,8 @@ namespace NuGetValidators.Localization
                 var path = Path.Combine(logPath, logFileName + "_Simple.csv");
 
                 Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Error Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Errors logged at: {path}");
+                Console.WriteLine($"Type: {logFileName} - {logDescription}");
+                Console.WriteLine($"Logged at: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
