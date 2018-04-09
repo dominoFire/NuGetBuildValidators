@@ -22,10 +22,8 @@ namespace NuGetValidators.Localization
         private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
 
         // dll name -> resource name -> list of locales
-        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
-
-        // dll name -> resource name -> list of locales
-        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedExceptions = new Dictionary<string, Dictionary<string, List<string>>>();
+        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = 
+            new Dictionary<string, Dictionary<string, List<string>>>();
 
         // dll name -> list of locales
         private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
@@ -33,7 +31,22 @@ namespace NuGetValidators.Localization
         private static object _packageDllCollectionLock = new object();
 
         private static int _numberOfThreads = 8;
-        private static HashSet<string> _languages = new HashSet<string> { "cs", "de", "es", "fr", "it", "ja", "ko", "pl", "pt-br", "ru", "tr", "zh-hans", "zh-hant" };
+        private static HashSet<string> _languages = new HashSet<string>()
+        {
+            "cs",
+            "de",
+            "es",
+            "fr",
+            "it",
+            "ja",
+            "ko",
+            "pl",
+            "pt-br",
+            "ru",
+            "tr",
+            "zh-hans",
+            "zh-hant"
+        };
 
         public static int Main(string[] args)
         {

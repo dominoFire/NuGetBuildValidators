@@ -5,11 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidators.Utility
 {
-    internal static class Logger
+    public static class Logger
     {
-        internal static void LogErrors(
+        public static void LogErrors(
             string logPath, 
             ConcurrentQueue<string> nonLocalizedStringErrors, 
             ConcurrentQueue<string> mismatchErrors, 
