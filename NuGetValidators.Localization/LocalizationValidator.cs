@@ -20,7 +20,14 @@ namespace NuGetValidators.Localization
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
+
+        // dll name -> resource name -> list of locales
         private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
+
+        // dll name -> resource name -> list of locales
+        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedExceptions = new Dictionary<string, Dictionary<string, List<string>>>();
+
+        // dll name -> list of locales
         private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
         private static object _packageStringCollectionLock = new object();
         private static object _packageDllCollectionLock = new object();
