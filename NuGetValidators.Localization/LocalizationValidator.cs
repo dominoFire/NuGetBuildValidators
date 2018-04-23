@@ -18,15 +18,35 @@ namespace NuGetValidators.Localization
     {
         private static ConcurrentQueue<string> _nonLocalizedStringErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _missingLocalizedErrors = new ConcurrentQueue<string>();
-        private static ConcurrentQueue<string> _misMatcherrors = new ConcurrentQueue<string>();
+        private static ConcurrentQueue<string> _mismatchErrors = new ConcurrentQueue<string>();
         private static ConcurrentQueue<string> _lockedStrings = new ConcurrentQueue<string>();
-        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
+
+        // dll name -> resource name -> list of locales
+        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped = 
+            new Dictionary<string, Dictionary<string, List<string>>>();
+
+        // dll name -> list of locales
         private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
         private static object _packageStringCollectionLock = new object();
         private static object _packageDllCollectionLock = new object();
 
         private static int _numberOfThreads = 8;
-        private static HashSet<string> _languages = new HashSet<string> { "cs", "de", "es", "fr", "it", "ja", "ko", "pl", "pt-br", "ru", "tr", "zh-hans", "zh-hant" };
+        private static HashSet<string> _languages = new HashSet<string>()
+        {
+            "cs",
+            "de",
+            "es",
+            "fr",
+            "it",
+            "ja",
+            "ko",
+            "pl",
+            "pt-br",
+            "ru",
+            "tr",
+            "zh-hans",
+            "zh-hant"
+        };
 
         public static int Main(string[] args)
         {
@@ -67,7 +87,15 @@ namespace NuGetValidators.Localization
 
             Execute(lciCommentsDirPath, englishDlls);
 
-            LogErrors(logPath);
+            Logger.LogErrors(
+                logPath,
+                _nonLocalizedStringErrors,
+                _mismatchErrors,
+                _missingLocalizedErrors,
+                _lockedStrings,
+                _nonLocalizedStringErrorsDeduped,
+                _localizedDlls,
+                _languages);
 
             return GetReturnCode();
         }
@@ -90,7 +118,15 @@ namespace NuGetValidators.Localization
 
             Execute(lciCommentsDirPath, englishDlls);
 
-            LogErrors(logPath);
+            Logger.LogErrors(
+                logPath, 
+                _nonLocalizedStringErrors, 
+                _mismatchErrors, 
+                _missingLocalizedErrors, 
+                _lockedStrings, 
+                _nonLocalizedStringErrorsDeduped, 
+                _localizedDlls,
+                _languages);
 
             return GetReturnCode();
         }
@@ -111,7 +147,15 @@ namespace NuGetValidators.Localization
 
             Execute(lciCommentsDirPath, files.ToArray());
 
-            LogErrors(logPath);
+            Logger.LogErrors(
+                logPath,
+                _nonLocalizedStringErrors,
+                _mismatchErrors,
+                _missingLocalizedErrors,
+                _lockedStrings,
+                _nonLocalizedStringErrorsDeduped,
+                _localizedDlls,
+                _languages);
 
             return GetReturnCode();
         }
@@ -282,7 +326,7 @@ namespace NuGetValidators.Localization
                                 $"'{firstResourceSetEnumerator.Key}':'{firstResourceSetEnumerator.Value}' {Environment.NewLine}" +
                                 $"'{firstResourceSetEnumerator.Key}':'{secondResource}'{Environment.NewLine}" +
                                 "================================================================================================================";
-                            _misMatcherrors.Enqueue(error);
+                            _mismatchErrors.Enqueue(error);
                             result = false;
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value as string))
@@ -607,7 +651,7 @@ namespace NuGetValidators.Localization
                 // Currently these are treated as non fatal errors
                 result = result == 1 ? 1 : 0;
             }
-            if (_misMatcherrors.Any())
+            if (_mismatchErrors.Any())
             {
                 // Currently these are treated as non fatal errors
                 result = result == 1 ? 1 : 0;
@@ -629,196 +673,6 @@ namespace NuGetValidators.Localization
             }
 
             return result;
-        }
-
-        private static void LogErrors(string logPath)
-        {
-            if (!Directory.Exists(logPath))
-            {
-                Console.WriteLine($"INFO: Creating new directory for logs at '{logPath}'");
-                Directory.CreateDirectory(logPath);
-            }
-
-            LogErrors(logPath, 
-                _nonLocalizedStringErrors, 
-                "NotLocalizedStrings", 
-                "These Strings are same as English strings.");
-
-            LogErrors(logPath, 
-                _misMatcherrors, 
-                "MismatchStrings", 
-                "These Strings do not contain the same number of placeholders as the English strings.");
-
-            LogErrors(logPath, 
-                _missingLocalizedErrors, 
-                "MissingStrings", 
-                "These Strings are missing in the localized dlls.");
-
-            LogErrors(logPath,
-                _lockedStrings,
-                "LockedStrings",
-                "These are wholly locked or contain a locked sub string.");
-
-            LogCollectionToXslt(logPath,
-                _nonLocalizedStringErrorsDeduped,
-                "NotLocalizedStringsUnique",
-                "These Strings are same as English strings.");
-
-            LogCollectionToXslt(logPath,
-                _localizedDlls,
-                "NotLocalizedDllUnique",
-                "These Dlls have not been localized.");
-        }
-
-        private static void LogErrors(string logPath, 
-            ConcurrentQueue<string>errors, 
-            string errorType, 
-            string errorDescription)
-        {
-            if (errors.Any())
-            {
-                var path = Path.Combine(logPath, errorType + ".txt");
-
-                Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Type: {errorType} - {errorDescription}");
-                Console.WriteLine($"Total count: {errors.Count()}");
-                Console.WriteLine($"Logged at: {path}");
-                Console.WriteLine("================================================================================================================");
-
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-
-                using (StreamWriter w = File.AppendText(path))
-                {
-                    foreach (var error in errors)
-                    {
-                        w.WriteLine(error);
-                    }
-                }
-            }
-        }
-
-        private static void LogCollectionToXslt(string logPath, 
-            Dictionary<string, Dictionary<string, List<string>>> collection, 
-            string logFileName, 
-            string logDescription)
-        {
-            if (collection.Keys.Any())
-            {
-                var path = Path.Combine(logPath, logFileName + ".csv");
-
-                Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
-                Console.WriteLine($"Logged at: {path}");
-                Console.WriteLine("================================================================================================================");
-
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-                using (StreamWriter w = File.AppendText(path))
-                {
-                    w.WriteLine("Dll Name, Resource Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
-                    foreach (var dll in collection.Keys)
-                    {
-                        foreach (var resource in collection[dll].Keys)
-                        {
-                            var line = new StringBuilder();
-                            line.Append(dll);
-                            line.Append(",");
-                            line.Append(resource);
-                            line.Append(",");
-                            foreach (var language in _languages)
-                            {
-                                line.Append(collection[dll][resource].Contains(language) ? "Error" : "");
-                                line.Append(",");
-                            }
-
-                            w.WriteLine(line.ToString());
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void LogCollectionToXslt(string logPath, 
-           Dictionary<string, List<string>> collection, 
-            string logFileName,
-            string logDescription)
-        {
-            if (collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Any())
-            {
-                var path = Path.Combine(logPath, logFileName + ".csv");
-
-                Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != _languages.Count()).Count()}");
-                Console.WriteLine($"Logged at: {path}");
-                Console.WriteLine("================================================================================================================");
-
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-
-                using (StreamWriter w = File.AppendText(path))
-                {
-                    w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
-                    foreach (var dll in collection.Keys)
-                    {
-                        if (collection[dll].Count != _languages.Count())
-                        {
-                            var line = new StringBuilder();
-                            line.Append(dll);
-                            line.Append(",");
-                            foreach (var language in _languages)
-                            {
-                                line.Append(!collection[dll].Contains(language) ? "Error" : "");
-                                line.Append(",");
-                            }
-
-                            w.WriteLine(line.ToString());
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void LogCollectionToXsltSimple(string logPath,
-            Dictionary<string, Dictionary<string, List<string>>> collection,
-            string logFileName,
-            string logDescription)
-        {
-            if (collection.Keys.Any())
-            {
-                var path = Path.Combine(logPath, logFileName + "_Simple.csv");
-
-                Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Logged at: {path}");
-                Console.WriteLine("================================================================================================================");
-
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-                using (StreamWriter w = File.AppendText(path))
-                {
-                    foreach (var dll in collection.Keys)
-                    {
-                        foreach (var resource in collection[dll].Keys)
-                        {
-                            foreach (var langauge in collection[dll][resource])
-                            {
-                                w.WriteLine(string.Concat(dll, ",", resource, ",", langauge));
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
