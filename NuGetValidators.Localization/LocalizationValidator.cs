@@ -55,6 +55,11 @@ namespace NuGetValidators.Localization
         private static readonly object _identicalLocalizedStringsDedupedCollectionLock = new object();
 
         /// <summary>
+        /// Summary object to hold all important information that will be written to a json file
+        /// </summary>
+        private static readonly ResultSummary _resultSummary = new ResultSummary();
+
+        /// <summary>
         /// lock for _localizedDlls
         /// </summary>
         private static readonly object _localizedDllCollectionLock = new object();
@@ -62,7 +67,12 @@ namespace NuGetValidators.Localization
         /// <summary>
         /// lock for _lockedStrings
         /// </summary>
-        private static readonly object _lockedStringCollectionLock = new object();        
+        private static readonly object _lockedStringCollectionLock = new object();
+
+        /// <summary>
+        /// lock for _resultSummary
+        /// </summary>
+        private static readonly object _resultSummaryLock = new object();
 
         /// <summary>
         /// number of parallel threads
@@ -76,6 +86,14 @@ namespace NuGetValidators.Localization
             var logPath = OutputPath;
             var lciCommentsDirPath = CommentsPath;
 
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExecutionType = ExecutionType.Vsix;
+                _resultSummary.VsixPath = VsixPath;
+                _resultSummary.VsixExtractionPath = VsixExtractPath;
+                _resultSummary.OutputPath = OutputPath;
+            }
+
             WarnIfNoLciDirectory(lciCommentsDirPath);
 
             VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
@@ -88,6 +106,12 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
+            var exitCode = GetExitCode();
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExitCode = exitCode;
+            }
+
             LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
@@ -95,9 +119,10 @@ namespace NuGetValidators.Localization
                 _missingLocalizedErrors,
                 lockedStringsFalttened,
                 _identicalLocalizedStringDeduped,
-                _localizedDlls);
+                _localizedDlls,
+                _resultSummary);
 
-            return GetReturnCode();
+            return exitCode;
         }
 
         public static int ExecuteForArtifacts(string ArtifactsPath, string OutputPath, string CommentsPath)
@@ -105,6 +130,13 @@ namespace NuGetValidators.Localization
             var artifactsPath = ArtifactsPath;
             var logPath = OutputPath;
             var lciCommentsDirPath = CommentsPath;
+
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExecutionType = ExecutionType.Artifacts;
+                _resultSummary.ArtifactsPath = artifactsPath;
+                _resultSummary.OutputPath = OutputPath;
+            }
 
             WarnIfNoLciDirectory(lciCommentsDirPath);
 
@@ -116,6 +148,12 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
+            var exitCode = GetExitCode();
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExitCode = exitCode;
+            }
+
             LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
@@ -123,9 +161,10 @@ namespace NuGetValidators.Localization
                 _missingLocalizedErrors,
                 lockedStringsFalttened,
                 _identicalLocalizedStringDeduped,
-                _localizedDlls);
+                _localizedDlls,
+                _resultSummary);
 
-            return GetReturnCode();
+            return exitCode;
         }
 
         public static int ExecuteForFiles(IList<string> Files, string OutputPath, string CommentsPath)
@@ -133,6 +172,13 @@ namespace NuGetValidators.Localization
             var files = Files;
             var logPath = OutputPath;
             var lciCommentsDirPath = CommentsPath;
+
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExecutionType = ExecutionType.Files;
+                _resultSummary.InputFiles.AddRange(files);
+                _resultSummary.OutputPath = OutputPath;
+            }
 
             WarnIfNoLciDirectory(lciCommentsDirPath);
 
@@ -142,6 +188,12 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
+            var exitCode = GetExitCode();
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.ExitCode = exitCode;
+            }
+
             LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
@@ -149,9 +201,10 @@ namespace NuGetValidators.Localization
                 _missingLocalizedErrors,
                 lockedStringsFalttened,
                 _identicalLocalizedStringDeduped,
-                _localizedDlls);
+                _localizedDlls,
+                _resultSummary);
 
-            return GetReturnCode();
+            return exitCode;
         }
 
         private static void Execute(string lciCommentsDirPath, string[] englishDlls)
@@ -161,6 +214,11 @@ namespace NuGetValidators.Localization
             ParallelOptions ops = new ParallelOptions { MaxDegreeOfParallelism = _numberOfThreads };
             Parallel.ForEach(englishDlls, ops, englishDll =>
             {
+                var englishAssemblyMetadata = new EnglishAssemblyMetadata()
+                {
+                    AssemblyPath = englishDll
+                };
+
                 if (!File.Exists(englishDll))
                 {
                     Console.WriteLine($"File Not Found: {englishDll}");
@@ -174,6 +232,8 @@ namespace NuGetValidators.Localization
                     if (DoesDllContainResourceStrings(englishDll))
                     {
                         var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll);
+                        englishAssemblyMetadata.HasResources = true;
+                        englishAssemblyMetadata.TranslatedAssemblyCount = translatedDlls.Count();
 
                         Console.WriteLine($"Validating: {englishDll} " +
                             Environment.NewLine +
@@ -204,17 +264,25 @@ namespace NuGetValidators.Localization
                     }
                     else
                     {
+                        englishAssemblyMetadata.HasResources = false;
                         Console.WriteLine($"Validating: {englishDll} " +
                             Environment.NewLine +
                             $"\t Contains resource strings: False" +
                             Environment.NewLine);
                     }
                 }
+
+                lock (_resultSummaryLock)
+                {
+                    _resultSummary.EnglishAssemblies.Add(englishAssemblyMetadata);
+                }
             });
         }
 
         private static void WarnIfNoLciDirectory(string lciCommentsDirPath)
         {
+            var lciFiles = new List<string>();
+
             if (!Directory.Exists(lciCommentsDirPath))
             {
                 Console.WriteLine($"WARNING: LCI comments path '{lciCommentsDirPath}' not found in local git repo! " +
@@ -225,8 +293,15 @@ namespace NuGetValidators.Localization
                 Console.WriteLine($"INFO: LCI Files found - ");
                 foreach (var file in Directory.GetFiles(lciCommentsDirPath))
                 {
+                    lciFiles.Add(file);
                     Console.WriteLine($"\t {file}");
                 }
+            }
+
+            lock (_resultSummaryLock)
+            {
+                _resultSummary.LciDirectory = lciCommentsDirPath;
+                _resultSummary.LciFiles.AddRange(lciFiles);
             }
         }
 
@@ -291,13 +366,13 @@ namespace NuGetValidators.Localization
 
                                 AddToLockedStringCollection(
                                     _lockedStrings,
-                                    firstAssemblyName, 
-                                    firstResourceSetEnumerator.Key.ToString(), 
+                                    firstAssemblyName,
+                                    firstResourceSetEnumerator.Key.ToString(),
                                     compareResult);
                             }
 
                             if (IsStringResourceLocked(cmtString, valueString))
-                            {                                
+                            {
                                 continue;
                             }
                         }
@@ -596,7 +671,7 @@ namespace NuGetValidators.Localization
 
         private static void AddToLockedStringCollection(
             Dictionary<string, Dictionary<string, StringCompareResult>> collection,
-            string dllName, 
+            string dllName,
             string resourceName,
             StringCompareResult result)
         {
@@ -618,8 +693,8 @@ namespace NuGetValidators.Localization
 
         private static void AddToIdenticalStringsDedupedCollection(
             Dictionary<string, Dictionary<string, List<string>>> collection,
-            string dllName, 
-            string resourceName, 
+            string dllName,
+            string resourceName,
             string language)
         {
             lock (_identicalLocalizedStringsDedupedCollectionLock)
@@ -656,7 +731,7 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static int GetReturnCode()
+        private static int GetExitCode()
         {
             int result = 0;
 
@@ -677,10 +752,15 @@ namespace NuGetValidators.Localization
             }
             if (_identicalLocalizedStringDeduped.Keys.Any())
             {
+                // Currently these are treated as non fatal errors
+                result = result == 1 ? 1 : 0;
+            }
+            if (_localizedDlls.Keys.Any(key => !_localizedDlls[key].HasAllLocales()))
+            {
                 // These are treated as fatal errors
                 result = 1;
             }
-            if (_localizedDlls.Keys.Any(key => _localizedDlls[key].LocalizedAssemblies.Count != _localizedDlls[key].ExpectedLocalizedAssemblies.Count))
+            if (_localizedDlls.Keys.Any(key => !_localizedDlls[key].HasExpectedLocalizedAssemblies()))
             {
                 // These are treated as fatal errors
                 result = 1;

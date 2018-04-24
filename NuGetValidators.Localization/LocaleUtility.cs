@@ -23,15 +23,5 @@ namespace NuGetValidators.Localization
         };
 
         public static string[] LocaleStrings => _localeStringToIndex.Keys.ToArray();
-
-        public static string LocaleToString(Locale locale)
-        {
-            return LocaleStrings[(int)locale];
-        }
-
-        public static Locale StringToLocale(string localeString)
-        {
-            return (Locale)_localeStringToIndex[localeString];
-        }
     }
 }
