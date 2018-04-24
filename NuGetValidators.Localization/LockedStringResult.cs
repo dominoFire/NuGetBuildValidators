@@ -10,11 +10,13 @@ namespace NuGetValidators.Localization
 
         public override JObject ToJson()
         {
-            var json = base.ToJson();
-            json["EnglishValue"] = EnglishValue;
-            json["LockComment"] = LockComment;
-
-            return json;
+            return new JObject
+            {
+                ["ResourceName"] = ResourceName,
+                ["AssemblyName"] = AssemblyName,
+                ["EnglishValue"] = EnglishValue,
+                ["LockComment"] = LockComment,
+            };
         }
     }
 }

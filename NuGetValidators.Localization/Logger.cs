@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,10 +12,10 @@ namespace NuGetValidators.Localization
     {
         public static void LogErrors(
             string logPath, 
-            ConcurrentQueue<StringCompareResult> identicalLocalizedStrings, 
-            ConcurrentQueue<StringCompareResult> mismatchErrors, 
-            ConcurrentQueue<StringCompareResult> missingLocalizedErrors, 
-            ConcurrentQueue<StringCompareResult> lockedStrings, 
+            IEnumerable<StringCompareResult> identicalLocalizedStrings,
+            IEnumerable<StringCompareResult> mismatchErrors,
+            IEnumerable<StringCompareResult> missingLocalizedErrors,
+            IEnumerable<StringCompareResult> lockedStrings, 
             Dictionary<string, Dictionary<string, List<string>>> nonLocalizedStringErrorsDeduped, 
             Dictionary<string, List<string>> localizedDlls)
         {
@@ -65,7 +64,7 @@ namespace NuGetValidators.Localization
 
         private static void LogErrors(
             string logPath,
-            ConcurrentQueue<StringCompareResult> errors,
+            IEnumerable<StringCompareResult> errors,
             string errorType,
             string errorDescription)
         {
@@ -121,8 +120,8 @@ namespace NuGetValidators.Localization
 
                 Console.WriteLine("================================================================================================================");
                 Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Unique non-translated count: {collection.Keys.Count}");
-                Console.WriteLine($"Logged at: {path}");
+                Console.WriteLine($"Count: {collection.Keys.Count}");
+                Console.WriteLine($"Path: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
@@ -166,8 +165,8 @@ namespace NuGetValidators.Localization
 
                 Console.WriteLine("================================================================================================================");
                 Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != LocaleUtility.LocaleStrings.Count()).Count()}");
-                Console.WriteLine($"Logged at: {path}");
+                Console.WriteLine($"Count: {collection.Keys.Where(key => collection[key].Count() != LocaleUtility.LocaleStrings.Count()).Count()}");
+                Console.WriteLine($"Path: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))

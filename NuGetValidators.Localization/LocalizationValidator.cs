@@ -20,32 +20,54 @@ namespace NuGetValidators.Localization
         /// <summary>
         /// Strings for which the localization is same as english
         /// </summary>
-        private static ConcurrentQueue<StringCompareResult> _identicalLocalizedStrings = new ConcurrentQueue<StringCompareResult>();
+        private static readonly ConcurrentQueue<StringCompareResult> _identicalLocalizedStrings = new ConcurrentQueue<StringCompareResult>();
 
         /// <summary>
         /// strings that have are missing in localized assemblies
         /// </summary>
-        private static ConcurrentQueue<StringCompareResult> _missingLocalizedErrors = new ConcurrentQueue<StringCompareResult>();
+        private static readonly ConcurrentQueue<StringCompareResult> _missingLocalizedErrors = new ConcurrentQueue<StringCompareResult>();
 
         /// <summary>
         /// strings that have different number of placeholders in the localized value
         /// </summary>
-        private static ConcurrentQueue<StringCompareResult> _mismatchErrors = new ConcurrentQueue<StringCompareResult>();
+        private static readonly ConcurrentQueue<StringCompareResult> _mismatchErrors = new ConcurrentQueue<StringCompareResult>();
 
         /// <summary>
-        /// strings that have been locked
+        /// strings that are not localized saved per dll
+        /// dll name -> resource name -> list of locales
         /// </summary>
-        private static ConcurrentQueue<StringCompareResult> _lockedStrings = new ConcurrentQueue<StringCompareResult>();
+        private static readonly Dictionary<string, Dictionary<string, List<string>>> _identicalLocalizedStringDeduped = new Dictionary<string, Dictionary<string, List<string>>>();
 
-        // dll name -> resource name -> list of locales
-        private static Dictionary<string, Dictionary<string, List<string>>> _nonLocalizedStringErrorsDeduped =
-            new Dictionary<string, Dictionary<string, List<string>>>();
+        /// <summary>
+        /// dlls and all the languages in which they have been localized 
+        /// dll name -> list of locales
+        /// </summary>
+        private static readonly Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
 
-        // dll name -> list of locales
-        private static Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
-        private static readonly object _packageStringCollectionLock = new object();
-        private static readonly object _packageDllCollectionLock = new object();
+        /// <summary>
+        /// strings that are locked per dll
+        /// dll name -> resource name -> locked string
+        /// </summary>
+        private static readonly Dictionary<string, Dictionary<string, StringCompareResult>> _lockedStrings = new Dictionary<string, Dictionary<string, StringCompareResult>>();
 
+        /// <summary>
+        /// lock for _identicalLocalizedStringErrorsDeduped
+        /// </summary>
+        private static readonly object _identicalLocalizedStringsDedupedCollectionLock = new object();
+
+        /// <summary>
+        /// lock for _localizedDlls
+        /// </summary>
+        private static readonly object _localizedDllCollectionLock = new object();
+
+        /// <summary>
+        /// lock for _lockedStrings
+        /// </summary>
+        private static readonly object _lockedStringCollectionLock = new object();        
+
+        /// <summary>
+        /// number of parallel threads
+        /// </summary>
         private static int _numberOfThreads = 8;
 
         public static int ExecuteForVsix(string VsixPath, string VsixExtractPath, string OutputPath, string CommentsPath)
@@ -57,20 +79,23 @@ namespace NuGetValidators.Localization
 
             WarnIfNoLciDirectory(lciCommentsDirPath);
 
-            VsixUtility.CleanExtractedFiles(extractedVsixPath);
             VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             var englishDlls = FileUtility.GetDlls(extractedVsixPath);
 
             Execute(lciCommentsDirPath, englishDlls);
 
+            var lockedStringsFalttened = _lockedStrings
+                .SelectMany(d => d.Value.Select(s => s.Value))
+                .ToList();
+
             Logger.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
                 _missingLocalizedErrors,
-                _lockedStrings,
-                _nonLocalizedStringErrorsDeduped,
+                lockedStringsFalttened,
+                _identicalLocalizedStringDeduped,
                 _localizedDlls);
 
             return GetReturnCode();
@@ -88,13 +113,17 @@ namespace NuGetValidators.Localization
 
             Execute(lciCommentsDirPath, englishDlls);
 
+            var lockedStringsFalttened = _lockedStrings
+                .SelectMany(d => d.Value.Select(s => s.Value))
+                .ToList();
+
             Logger.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
                 _missingLocalizedErrors,
-                _lockedStrings,
-                _nonLocalizedStringErrorsDeduped,
+                lockedStringsFalttened,
+                _identicalLocalizedStringDeduped,
                 _localizedDlls);
 
             return GetReturnCode();
@@ -110,13 +139,17 @@ namespace NuGetValidators.Localization
 
             Execute(lciCommentsDirPath, files.ToArray());
 
+            var lockedStringsFalttened = _lockedStrings
+                .SelectMany(d => d.Value.Select(s => s.Value))
+                .ToList();
+
             Logger.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
                 _missingLocalizedErrors,
-                _lockedStrings,
-                _nonLocalizedStringErrorsDeduped,
+                lockedStringsFalttened,
+                _identicalLocalizedStringDeduped,
                 _localizedDlls);
 
             return GetReturnCode();
@@ -141,7 +174,6 @@ namespace NuGetValidators.Localization
                 {
                     if (DoesDllContainResourceStrings(englishDll))
                     {
-
                         var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll)
                             .ToList();
 
@@ -153,16 +185,18 @@ namespace NuGetValidators.Localization
                             Environment.NewLine);
 
                         // Add translated dlls into a collection to filter out localized dlls
-                        AddToCollection(_localizedDlls,
-                            Path.GetFileName(englishDll));
+                        AddToCollection(
+                            _localizedDlls,
+                            Path.GetFileNameWithoutExtension(englishDll));
 
                         foreach (var translatedDll in translatedDlls)
                         {
                             try
                             {
                                 // Add translated dlls into a collection to filter out localized dlls
-                                AddToCollection(_localizedDlls,
-                                    Path.GetFileName(englishDll),
+                                AddToCollection(
+                                    _localizedDlls,
+                                    Path.GetFileNameWithoutExtension(englishDll),
                                     Directory.GetParent(translatedDll).Name);
 
                                 CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
@@ -207,7 +241,12 @@ namespace NuGetValidators.Localization
             return Directory.GetFiles(rootDir, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
         }
 
-        private static bool CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
+        private static void LogLockedStrings()
+        {
+
+        }
+
+        private static void CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
         {
             var lciFilePath = Path.Combine(lciCommentDirPath, Path.GetFileName(firstDll) + ".lci");
             XElement lciFile = null;
@@ -220,13 +259,14 @@ namespace NuGetValidators.Localization
                 Console.WriteLine($"WARNING: No LCI file found at {lciFilePath}");
             }
 
-            var result = true;
-
             var firstAssembly = Assembly.LoadFrom(firstDll);
             var firstAssemblyResourceFullNames = GetResourceFullNamesFromDll(firstAssembly);
 
             var secondAssembly = Assembly.LoadFrom(secondDll);
             var secondAssemblyResourceFullNames = GetResourceFullNamesFromDll(secondAssembly);
+
+            var firstAssemblyName = Path.GetFileNameWithoutExtension(firstDll);
+            Enum.TryParse<Locale>(Directory.GetParent(secondDll).Name, out var locale);
 
             foreach (var firstAssemblyResourceFullName in firstAssemblyResourceFullNames)
             {
@@ -254,13 +294,16 @@ namespace NuGetValidators.Localization
                                 var compareResult = new LockedStringResult()
                                 {
                                     ResourceName = firstResourceSetEnumerator.Key.ToString(),
-                                    AssemblyName = firstAssemblyResourceFullName,
-                                    Locale = Locale.cs,
+                                    AssemblyName = firstAssemblyName,
                                     EnglishValue = firstResourceSetEnumerator.Value.ToString(),
                                     LockComment = cmtString
                                 };
 
-                                _lockedStrings.Enqueue(compareResult);
+                                AddToCollection(
+                                    _lockedStrings,
+                                    firstAssemblyName, 
+                                    firstResourceSetEnumerator.Key.ToString(), 
+                                    compareResult);
                             }
 
                             if (IsStringResourceLocked(cmtString, valueString))
@@ -274,7 +317,7 @@ namespace NuGetValidators.Localization
 
                         var secondResource = GetResourceFromAssembly(
                             secondResourceFullName,
-                            firstResourceSetEnumerator.Key as string,
+                            firstResourceSetEnumerator.Key.ToString(),
                             secondAssembly);
 
                         if (secondResource == null)
@@ -282,34 +325,32 @@ namespace NuGetValidators.Localization
                             var compareResult = new StringCompareResult()
                             {
                                 ResourceName = firstResourceSetEnumerator.Key.ToString(),
-                                AssemblyName = firstAssemblyResourceFullName,
-                                Locale = Locale.cs
+                                AssemblyName = firstAssemblyName,
+                                Locale = locale,
                             };
 
                             _missingLocalizedErrors.Enqueue(compareResult);
-                            result = false;
                         }
                         else if (!CompareStrings(firstResourceSetEnumerator.Value.ToString(), secondResource))
                         {
                             var compareResult = new MismatchedStringResult()
                             {
                                 ResourceName = firstResourceSetEnumerator.Key.ToString(),
-                                AssemblyName = firstAssemblyResourceFullName,
-                                Locale = Locale.cs,
+                                AssemblyName = firstAssemblyName,
+                                Locale = locale,
                                 EnglishValue = firstResourceSetEnumerator.Value.ToString(),
                                 LocalizedValue = secondResource
                             };
 
                             _mismatchErrors.Enqueue(compareResult);
-                            result = false;
                         }
                         else if (secondResource.Equals(firstResourceSetEnumerator.Value.ToString()))
                         {
                             var compareResult = new IdenticalStringResult()
                             {
                                 ResourceName = firstResourceSetEnumerator.Key.ToString(),
-                                AssemblyName = firstAssemblyResourceFullName,
-                                Locale = Locale.cs,
+                                AssemblyName = firstAssemblyName,
+                                Locale = locale,
                                 EnglishValue = firstResourceSetEnumerator.Value.ToString(),
                                 LocalizedValue = secondResource
                             };
@@ -317,18 +358,14 @@ namespace NuGetValidators.Localization
                             _identicalLocalizedStrings.Enqueue(compareResult);
 
                             AddToCollection(
-                                _nonLocalizedStringErrorsDeduped,
-                                Path.GetFileName(firstDll),
+                                _identicalLocalizedStringDeduped,
+                                firstAssemblyName,
                                 firstResourceSetEnumerator.Key.ToString(),
-                                Directory.GetParent(secondDll).Name);
-
-                            result = false;
+                                locale.ToString());
                         }
                     }
                 }
             }
-
-            return result;
         }
 
         private static bool IsResourceStringUriOrNonAlphabetical(string resourceKey, IDictionaryEnumerator resourceSetEnumerator)
@@ -567,10 +604,35 @@ namespace NuGetValidators.Localization
             return unequalMetadata.Count() == 0;
         }
 
-        private static void AddToCollection(Dictionary<string, Dictionary<string, List<string>>> collection,
-            string dllName, string resourceName, string language)
+        private static void AddToCollection(
+            Dictionary<string, Dictionary<string, StringCompareResult>> collection,
+            string dllName, 
+            string resourceName,
+            StringCompareResult result)
         {
-            lock (_packageStringCollectionLock)
+            lock (_lockedStringCollectionLock)
+            {
+                if (collection.ContainsKey(dllName))
+                {
+                    if (!collection[dllName].ContainsKey(resourceName))
+                    {
+                        collection[dllName][resourceName] = result;
+                    }
+                }
+                else
+                {
+                    collection[dllName] = new Dictionary<string, StringCompareResult> { { resourceName, result } };
+                }
+            }
+        }
+
+        private static void AddToCollection(
+            Dictionary<string, Dictionary<string, List<string>>> collection,
+            string dllName, 
+            string resourceName, 
+            string language)
+        {
+            lock (_identicalLocalizedStringsDedupedCollectionLock)
             {
                 if (collection.ContainsKey(dllName))
                 {
@@ -590,10 +652,11 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static void AddToCollection(Dictionary<string, List<string>> collection,
+        private static void AddToCollection(
+            Dictionary<string, List<string>> collection,
             string dllName)
         {
-            lock (_packageDllCollectionLock)
+            lock (_localizedDllCollectionLock)
             {
                 if (!collection.ContainsKey(dllName))
                 {
@@ -602,10 +665,12 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static void AddToCollection(Dictionary<string, List<string>> collection,
-            string dllName, string language)
+        private static void AddToCollection(
+            Dictionary<string, List<string>> collection,
+            string dllName, 
+            string language)
         {
-            lock (_packageDllCollectionLock)
+            lock (_localizedDllCollectionLock)
             {
                 if (collection.ContainsKey(dllName))
                 {
@@ -641,7 +706,7 @@ namespace NuGetValidators.Localization
                 // These are treated as fatal errors
                 result = 1;
             }
-            if (_nonLocalizedStringErrorsDeduped.Keys.Any())
+            if (_identicalLocalizedStringDeduped.Keys.Any())
             {
                 // These are treated as fatal errors
                 result = 1;

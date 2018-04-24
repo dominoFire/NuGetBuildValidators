@@ -24,7 +24,6 @@ namespace NuGetValidators.Artifact
             var extractedVsixPath = VsixExtractPath;
             var logPath = OutputPath;
 
-            VsixUtility.CleanExtractedFiles(extractedVsixPath);
             VsixUtility.ExtractVsix(vsixPath, extractedVsixPath);
 
             var files = FileUtility.GetDlls(extractedVsixPath, isArtifacts: false);
