@@ -15,10 +15,3 @@ This tool is used to validate the NuGet.Tools.VSIX for localization of all strin
 
 [README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidator.Localization)
 
-## NuGet Artifacts Validator
-
-This tool is used to validate the NuGet.Tools.VSIX for signing of all files.
-
-[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidator.Artifact)
-
-
