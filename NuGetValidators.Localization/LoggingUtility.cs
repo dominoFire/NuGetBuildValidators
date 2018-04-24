@@ -237,10 +237,6 @@ namespace NuGetValidators.Localization
                 var serializer = JsonSerializer.Create(settings);
                 serializer.Serialize(file, json);
             }
-
-            Console.WriteLine();
-            Console.WriteLine("ResultSummary:");
-            Console.WriteLine(json);
         }
 
 
