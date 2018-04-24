@@ -8,7 +8,7 @@ using System.Text;
 
 namespace NuGetValidators.Localization
 {
-    internal static class Logger
+    internal static class LoggingUtility
     {
         public static void LogErrors(
             string logPath, 

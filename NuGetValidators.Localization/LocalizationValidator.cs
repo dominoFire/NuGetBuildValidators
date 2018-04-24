@@ -88,7 +88,7 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
-            Logger.LogErrors(
+            LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
@@ -116,7 +116,7 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
-            Logger.LogErrors(
+            LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
@@ -142,7 +142,7 @@ namespace NuGetValidators.Localization
                 .SelectMany(d => d.Value.Select(s => s.Value))
                 .ToList();
 
-            Logger.LogErrors(
+            LoggingUtility.LogErrors(
                 logPath,
                 _identicalLocalizedStrings,
                 _mismatchErrors,
