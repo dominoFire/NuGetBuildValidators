@@ -1,9 +1,9 @@
 ﻿
 using Newtonsoft.Json.Linq;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
-    internal class IdenticalStringResult : StringCompareResult
+    internal class MismatchedStringResult : StringCompareResult
     {
         public string EnglishValue { get; set; }
 

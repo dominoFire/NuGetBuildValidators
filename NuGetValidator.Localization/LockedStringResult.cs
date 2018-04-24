@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
     internal class LockedStringResult : StringCompareResult
     {

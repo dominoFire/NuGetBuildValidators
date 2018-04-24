@@ -1,4 +1,4 @@
-﻿using NuGetValidators.Utility;
+﻿using NuGetValidator.Utility;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -12,7 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
     public class LocalizationValidator
     {

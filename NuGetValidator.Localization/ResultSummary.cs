@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
     internal class ResultSummary
     {

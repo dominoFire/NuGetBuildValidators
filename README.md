@@ -13,12 +13,12 @@ This console application is used to validate the NuGet.Tools.VSIX or NuGet.Clien
 
 This tool is used to validate the NuGet.Tools.VSIX for localization of all strings.
 
-[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidators.Localization)
+[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidator.Localization)
 
 ## NuGet Artifacts Validator
 
 This tool is used to validate the NuGet.Tools.VSIX for signing of all files.
 
-[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidators.Artifact)
+[README.md](https://github.com/mishra14/NuGetBuildValidators/tree/master/NuGetValidator.Artifact)
 
 

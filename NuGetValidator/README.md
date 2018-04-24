@@ -34,10 +34,10 @@ To validate the artifatcs directory do not pass the `-x|--vsix` switch. Further 
 
 * `git clone https://github.com/mishra14/NuGetBuildValidators.git`
 * `cd NuGetBuildValidators`
-* `cd NuGetValidators.Localization`
+* `cd NuGetValidator.Localization`
 * `msbuild /t:Restore`
 * `msbuild`
-* `.\NuGetValidators\bin\Debug\net461\NuGetValidator.exe localization --artifacts-path "Path\to\Nuget.Client_repo\Artifacts" --output-path "Path\to\log\" --comments-path <NuGet_Localization_repository>\Main\localize\comments\15"`
+* `.\NuGetValidator\bin\Debug\net461\NuGetValidator.exe localization --artifacts-path "Path\to\Nuget.Client_repo\Artifacts" --output-path "Path\to\log\" --comments-path <NuGet_Localization_repository>\Main\localize\comments\15"`
 
 
 NuGet Localization repository - https://github.com/NuGet/NuGet.Build.Localization
@@ -70,10 +70,10 @@ NuGet Localization repository - https://github.com/NuGet/NuGet.Build.Localizatio
 
 * `git clone https://github.com/mishra14/NuGetBuildValidators.git`
 * `cd NuGetBuildValidators`
-* `cd NuGetValidators.Localization`
+* `cd NuGetValidator.Localization`
 * `msbuild /t:Restore`
 * `msbuild`
-* `.\NuGetValidators\bin\Debug\net461\NuGetValidator.exe --vsix-path "Path\to\vsix\NuGet.Tools.vsix"  --vsix-extract-path "Path\to\extract\NuGet.Tools.Vsix" --output-path "Path\to\log\" --comments-path <NuGet_Localization_repository>\Main\localize\comments\15"`
+* `.\NuGetValidator\bin\Debug\net461\NuGetValidator.exe --vsix-path "Path\to\vsix\NuGet.Tools.vsix"  --vsix-extract-path "Path\to\extract\NuGet.Tools.Vsix" --output-path "Path\to\log\" --comments-path <NuGet_Localization_repository>\Main\localize\comments\15"`
 
 ### Using NuGet Package NuGetValidator.Localization.nupkg
 

@@ -27,17 +27,17 @@ NuGet Localization repository - https://github.com/NuGet/NuGet.Build.Localizatio
 
 * `git clone https://github.com/mishra14/NuGetBuildValidators.git`
 * `cd NuGetBuildValidators`
-* `cd NuGetValidators.Localization`
+* `cd NuGetValidator.Localization`
 * `msbuild /t:Restore`
 * `msbuild`
-* `.\NuGetValidators.Localization\bin\Debug\net45\NuGetValidator.Localization.exe "Path\to\vsix\NuGet.Tools.vsix" "Path\to\extract\NuGet.Tools.Vsix" "Path\to\log\" "<NuGet_Localization_repository>\Main\localize\comments\15"`
+* `.\NuGetValidator.Localization\bin\Debug\net45\NuGetValidator.Localization.exe "Path\to\vsix\NuGet.Tools.vsix" "Path\to\extract\NuGet.Tools.Vsix" "Path\to\log\" "<NuGet_Localization_repository>\Main\localize\comments\15"`
 
 
 ### Using build.ps1
 
 * `git clone https://github.com/mishra14/NuGetBuildValidators.git`
 * `cd NuGetBuildValidators`
-* `cd NuGetValidators.Localization`
+* `cd NuGetValidator.Localization`
 * `msbuild /t:Restore`
 * `msbuild`
 * `.\build.ps1 -VS15InsVSIXPath "Path\to\vsix\NuGet.Tools.vsix" -VSIXUnzipPath "Path\to\extract\NuGet.Tools.Vsix" -LogPath "Path\to\log\" -NuGetCommentsPath "<NuGet_Localization_repository>\Main\localize\comments\15"`
