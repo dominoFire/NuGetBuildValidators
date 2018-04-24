@@ -9,10 +9,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.4.0.4</Version>
+    <Version>1.5.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild Condition=" '$(pack)'=='true'">true</GeneratePackageOnBuild>
     <Authors>Ankit Mishra</Authors>
     <Description>Package used internally in NuGet team's localization validation pipeline.</Description>
     <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>
