@@ -7,7 +7,7 @@ This is a console application used to validate the localized strings for NuGet.T
 
 ## Usage
 
-### Using NuGetValidator.exe to validate Nuget.Client repository
+### Using NuGetValidator.exe to validate NuGet.Client repository
 
 The NuGetValidator.exe accepts the following arguments - 
 
@@ -77,7 +77,7 @@ NuGet Localization repository - https://github.com/NuGet/NuGet.Build.Localizatio
 
 ### Using NuGet Package NuGetValidator.Localization.nupkg
 
-Things in flight, these instructions will be added soon....
+Things are in flight, these instructions will be added soon....
 
 ## Output
 
