@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -42,7 +41,7 @@ namespace NuGetValidators.Localization
         /// dlls and all the languages in which they have been localized 
         /// dll name -> list of locales
         /// </summary>
-        private static readonly Dictionary<string, List<string>> _localizedDlls = new Dictionary<string, List<string>>();
+        private static readonly Dictionary<string, LocalizedAssemblyResult> _localizedDlls = new Dictionary<string, LocalizedAssemblyResult>();
 
         /// <summary>
         /// strings that are locked per dll
@@ -174,31 +173,27 @@ namespace NuGetValidators.Localization
                 {
                     if (DoesDllContainResourceStrings(englishDll))
                     {
-                        var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll)
-                            .ToList();
+                        var translatedDlls = GetTranslatedDlls(Path.GetDirectoryName(englishDll), englishDll);
 
                         Console.WriteLine($"Validating: {englishDll} " +
                             Environment.NewLine +
                             $"\t Contains resource strings: True" +
                             Environment.NewLine +
-                            $"\t Translated dlls: {translatedDlls.Count()}" +
+                            $"\t Translated assembly count: {translatedDlls.Count()}" +
                             Environment.NewLine);
 
-                        // Add translated dlls into a collection to filter out localized dlls
-                        AddToCollection(
+                        var localizedAssemblyResult = new LocalizedAssemblyResult(englishDll, new HashSet<string>(translatedDlls.Select(s => s.ToLower()).ToList()));
+
+                        // Add english dll to allow filtering
+                        AddToLocalizedAssemblyCollection(
                             _localizedDlls,
-                            Path.GetFileNameWithoutExtension(englishDll));
+                            englishDll,
+                            localizedAssemblyResult);
 
                         foreach (var translatedDll in translatedDlls)
                         {
                             try
                             {
-                                // Add translated dlls into a collection to filter out localized dlls
-                                AddToCollection(
-                                    _localizedDlls,
-                                    Path.GetFileNameWithoutExtension(englishDll),
-                                    Directory.GetParent(translatedDll).Name);
-
                                 CompareAllStrings(englishDll, translatedDll, lciCommentsDirPath);
                             }
                             catch (Exception e)
@@ -239,11 +234,6 @@ namespace NuGetValidators.Localization
         {
             var englishDllName = Path.GetFileNameWithoutExtension(englishDllPath);
             return Directory.GetFiles(rootDir, $"{englishDllName}.resources.dll", SearchOption.AllDirectories);
-        }
-
-        private static void LogLockedStrings()
-        {
-
         }
 
         private static void CompareAllStrings(string firstDll, string secondDll, string lciCommentDirPath)
@@ -299,7 +289,7 @@ namespace NuGetValidators.Localization
                                     LockComment = cmtString
                                 };
 
-                                AddToCollection(
+                                AddToLockedStringCollection(
                                     _lockedStrings,
                                     firstAssemblyName, 
                                     firstResourceSetEnumerator.Key.ToString(), 
@@ -357,7 +347,7 @@ namespace NuGetValidators.Localization
 
                             _identicalLocalizedStrings.Enqueue(compareResult);
 
-                            AddToCollection(
+                            AddToIdenticalStringsDedupedCollection(
                                 _identicalLocalizedStringDeduped,
                                 firstAssemblyName,
                                 firstResourceSetEnumerator.Key.ToString(),
@@ -604,7 +594,7 @@ namespace NuGetValidators.Localization
             return unequalMetadata.Count() == 0;
         }
 
-        private static void AddToCollection(
+        private static void AddToLockedStringCollection(
             Dictionary<string, Dictionary<string, StringCompareResult>> collection,
             string dllName, 
             string resourceName,
@@ -626,7 +616,7 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static void AddToCollection(
+        private static void AddToIdenticalStringsDedupedCollection(
             Dictionary<string, Dictionary<string, List<string>>> collection,
             string dllName, 
             string resourceName, 
@@ -652,40 +642,19 @@ namespace NuGetValidators.Localization
             }
         }
 
-        private static void AddToCollection(
-            Dictionary<string, List<string>> collection,
-            string dllName)
+        private static void AddToLocalizedAssemblyCollection(
+            Dictionary<string, LocalizedAssemblyResult> collection,
+            string dllName,
+            LocalizedAssemblyResult result)
         {
             lock (_localizedDllCollectionLock)
             {
                 if (!collection.ContainsKey(dllName))
                 {
-                    collection[dllName] = new List<string>();
+                    collection[dllName] = result;
                 }
             }
         }
-
-        private static void AddToCollection(
-            Dictionary<string, List<string>> collection,
-            string dllName, 
-            string language)
-        {
-            lock (_localizedDllCollectionLock)
-            {
-                if (collection.ContainsKey(dllName))
-                {
-                    if (!collection[dllName].Contains(language))
-                    {
-                        collection[dllName].Add(language.ToLower());
-                    }
-                }
-                else
-                {
-                    collection[dllName] = new List<string> { language.ToLower() };
-                }
-            }
-        }
-
 
         private static int GetReturnCode()
         {
@@ -711,7 +680,7 @@ namespace NuGetValidators.Localization
                 // These are treated as fatal errors
                 result = 1;
             }
-            if (_localizedDlls.Keys.Where(key => _localizedDlls[key].Count() != LocaleUtility.LocaleStrings.Count()).Any())
+            if (_localizedDlls.Keys.Any(key => _localizedDlls[key].LocalizedAssemblies.Count != _localizedDlls[key].ExpectedLocalizedAssemblies.Count))
             {
                 // These are treated as fatal errors
                 result = 1;

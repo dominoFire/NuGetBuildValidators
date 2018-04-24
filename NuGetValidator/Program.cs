@@ -48,7 +48,7 @@ namespace NuGetValidator
             catch (Exception e)
             {
                 // Log the error
-                Console.WriteLine(ExceptionUtilities.DisplayMessage(e));
+                Console.WriteLine(e);
                 exitCode = 1;
             }
 
