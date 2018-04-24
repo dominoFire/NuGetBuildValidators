@@ -2,7 +2,7 @@
 using System.IO;
 using System.IO.Compression;
 
-namespace NuGetValidators.Utility
+namespace NuGetValidator.Utility
 {
     public class VsixUtility
     {

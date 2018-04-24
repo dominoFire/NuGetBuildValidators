@@ -1,5 +1,5 @@
 ﻿
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
     internal enum Locale
     {

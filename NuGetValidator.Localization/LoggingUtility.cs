@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace NuGetValidators.Localization
+namespace NuGetValidator.Localization
 {
     internal static class LoggingUtility
     {
@@ -218,6 +218,7 @@ namespace NuGetValidators.Localization
 
             Console.WriteLine("================================================================================================================");
             Console.WriteLine($"Type: {fileName} - {fileDescription}");
+            Console.WriteLine($"Exitcode: {resultSummary.ExitCode}");
             Console.WriteLine($"Path: {path}");
             Console.WriteLine("================================================================================================================");
 

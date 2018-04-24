@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.CommandLineUtils;
-using NuGetValidators.Localization;
-using NuGetValidators.Utility;
+using NuGetValidator.Localization;
+using NuGetValidator.Utility;
 using System;
 using System.Linq;
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace NuGetValidators.Utility
+namespace NuGetValidator.Utility
 {
     public class TemporaryDirectory : IDisposable
     {
