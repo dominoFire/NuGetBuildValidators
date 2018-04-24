@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace NuGetValidator.Localization
 {
-    internal class EnglishAssemblyMetadata
+    public class EnglishAssemblyMetadata
     {
         public string AssemblyPath { get; set; }
 

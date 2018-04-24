@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace NuGetValidator.Localization
 {
-    internal class ResultSummary
+    public class ResultSummary
     {
         public string ToolName { get; set; } = "NuGet.Validator";
 

@@ -3,9 +3,9 @@ using Newtonsoft.Json.Linq;
 
 namespace NuGetValidator.Localization
 {
-    internal class ResultMetadata
+    public class ResultMetadata
     {
-        public string Type { get; set; }
+        public ResultType Type { get; set; }
 
         public string Description { get; set; }
 
@@ -17,7 +17,7 @@ namespace NuGetValidator.Localization
         {
             return new JObject
             {
-                ["Type"] = Type,
+                ["Type"] = Type.ToString(),
                 ["Description"] = Description,
                 ["ErrorCount"] = ErrorCount,
                 ["Path"] = Path

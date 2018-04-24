@@ -29,7 +29,7 @@ namespace NuGetValidator.Localization
             var result = LogErrors(
                 logPath,
                 identicalLocalizedStrings,
-                "NonLocalizedStrings",
+                ResultType.NonLocalizedStrings,
                 "These Strings are same as English strings.");
 
             // no lock needed as the execution is no longer parallel
@@ -38,7 +38,7 @@ namespace NuGetValidator.Localization
             result = LogErrors(
                 logPath,
                 mismatchErrors,
-                "MismatchStrings",
+                ResultType.MismatchStrings,
                 "These Strings do not contain the same number of placeholders as the English strings.");
 
             resultSummary.Results.Add(result);
@@ -46,7 +46,7 @@ namespace NuGetValidator.Localization
             result = LogErrors(
                 logPath,
                 missingLocalizedErrors,
-                "MissingStrings",
+                ResultType.MissingStrings,
                 "These Strings are missing in the localized dlls.");
 
             resultSummary.Results.Add(result);
@@ -54,7 +54,7 @@ namespace NuGetValidator.Localization
             result = LogErrors(
                 logPath,
                 lockedStrings,
-                "LockedStrings",
+                ResultType.LockedStrings,
                 "These are wholly locked or contain a locked sub string.");
 
             resultSummary.Results.Add(result);
@@ -62,7 +62,7 @@ namespace NuGetValidator.Localization
             result = LogNonLocalizedStringsDedupedErrors(
                 logPath,
                 nonLocalizedStringDeduped,
-                "NonLocalizedStringsPerLanguage",
+                ResultType.NonLocalizedStringsPerLanguage,
                 "These Strings are same as English strings.");
 
             resultSummary.Results.Add(result);
@@ -70,7 +70,7 @@ namespace NuGetValidator.Localization
             result = LogNonLocalizedAssemblyErrors(
                 logPath,
                 localizedDlls,
-                "NonLocalizedAssemblies",
+                ResultType.NonLocalizedAssemblies,
                 "These assemblies have not been localized in one or more languages.");
 
             resultSummary.Results.Add(result);
@@ -78,7 +78,7 @@ namespace NuGetValidator.Localization
             result = LogWrongLocalizedAssemblyPathErrors(
                 logPath,
                 localizedDlls,
-                "WrongLocalizedAssemblyPaths",
+                ResultType.WrongLocalizedAssemblyPaths,
                 "These assemblies do not have localized dlls at the expected locations.");
 
             resultSummary.Results.Add(result);
@@ -93,7 +93,7 @@ namespace NuGetValidator.Localization
         private static ResultMetadata LogErrors(
             string logPath,
             IEnumerable<StringCompareResult> errors,
-            string errorType,
+            ResultType errorType,
             string errorDescription)
         {
             var result = new ResultMetadata()
@@ -130,7 +130,7 @@ namespace NuGetValidator.Localization
 
                     var json = new JObject
                     {
-                        ["Type"] = errorType,
+                        ["Type"] = errorType.ToString(),
                         ["Description"] = errorDescription,
                         ["errors"] = array
                     };
@@ -150,7 +150,7 @@ namespace NuGetValidator.Localization
         private static ResultMetadata LogWrongLocalizedAssemblyPathErrors(
             string logPath,
             Dictionary<string, LocalizedAssemblyResult> collection,
-            string errorType,
+            ResultType errorType,
             string errorDescription)
         {
             var result = new ResultMetadata()
@@ -189,7 +189,7 @@ namespace NuGetValidator.Localization
 
                     var json = new JObject
                     {
-                        ["Type"] = errorType,
+                        ["Type"] = errorType.ToString(),
                         ["Description"] = errorDescription,
                         ["errors"] = array
                     };
@@ -244,7 +244,7 @@ namespace NuGetValidator.Localization
         private static ResultMetadata LogNonLocalizedStringsDedupedErrors(
             string logPath,
             Dictionary<string, Dictionary<string, List<string>>> collection,
-            string errorType,
+            ResultType errorType,
             string errorDescription)
         {
             var result = new ResultMetadata()
@@ -300,7 +300,7 @@ namespace NuGetValidator.Localization
         private static ResultMetadata LogNonLocalizedAssemblyErrors(
             string logPath,
             Dictionary<string, LocalizedAssemblyResult> collection,
-            string errorType,
+            ResultType errorType,
             string errorDescription)
         {
             var result = new ResultMetadata()

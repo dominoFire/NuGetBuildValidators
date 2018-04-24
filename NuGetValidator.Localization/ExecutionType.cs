@@ -1,7 +1,7 @@
 ﻿
 namespace NuGetValidator.Localization
 {
-    internal enum ExecutionType
+    public enum ExecutionType
     {
         Vsix,
         Artifacts,
