@@ -1,23 +1,24 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace NuGetValidators.Utility
+namespace NuGetValidators.Localization
 {
-    public static class Logger
+    internal static class Logger
     {
         public static void LogErrors(
             string logPath, 
-            ConcurrentQueue<string> nonLocalizedStringErrors, 
-            ConcurrentQueue<string> mismatchErrors, 
-            ConcurrentQueue<string> missingLocalizedErrors, 
-            ConcurrentQueue<string> lockedStrings, 
+            ConcurrentQueue<StringCompareResult> identicalLocalizedStrings, 
+            ConcurrentQueue<StringCompareResult> mismatchErrors, 
+            ConcurrentQueue<StringCompareResult> missingLocalizedErrors, 
+            ConcurrentQueue<StringCompareResult> lockedStrings, 
             Dictionary<string, Dictionary<string, List<string>>> nonLocalizedStringErrorsDeduped, 
-            Dictionary<string, List<string>> localizedDlls,
-            HashSet<string> languages)
+            Dictionary<string, List<string>> localizedDlls)
         {
             if (!Directory.Exists(logPath))
             {
@@ -25,52 +26,57 @@ namespace NuGetValidators.Utility
                 Directory.CreateDirectory(logPath);
             }
 
-            LogErrors(logPath,
-                nonLocalizedStringErrors,
+            LogErrors(
+                logPath,
+                identicalLocalizedStrings,
                 "NotLocalizedStrings",
                 "These Strings are same as English strings.");
 
-            LogErrors(logPath,
+            LogErrors(
+                logPath,
                 mismatchErrors,
                 "MismatchStrings",
                 "These Strings do not contain the same number of placeholders as the English strings.");
 
-            LogErrors(logPath,
+            LogErrors(
+                logPath,
                 missingLocalizedErrors,
                 "MissingStrings",
                 "These Strings are missing in the localized dlls.");
 
-            LogErrors(logPath,
+            LogErrors(
+                logPath,
                 lockedStrings,
                 "LockedStrings",
                 "These are wholly locked or contain a locked sub string.");
 
-            LogCollectionToXslt(logPath,
+            LogCollectionToXslt(
+                logPath,
                 nonLocalizedStringErrorsDeduped,
-                languages,
                 "NotLocalizedStringsUnique",
                 "These Strings are same as English strings.");
 
-            LogCollectionToXslt(logPath,
+            LogCollectionToXslt(
+                logPath,
                 localizedDlls,
-                languages,
                 "NotLocalizedDllUnique",
                 "These Dlls have not been localized.");
         }
 
-        private static void LogErrors(string logPath,
-            ConcurrentQueue<string> errors,
+        private static void LogErrors(
+            string logPath,
+            ConcurrentQueue<StringCompareResult> errors,
             string errorType,
             string errorDescription)
         {
             if (errors.Any())
             {
-                var path = Path.Combine(logPath, errorType + ".txt");
+                var path = Path.Combine(logPath, errorType + ".json");
 
                 Console.WriteLine("================================================================================================================");
                 Console.WriteLine($"Type: {errorType} - {errorDescription}");
-                Console.WriteLine($"Total count: {errors.Count()}");
-                Console.WriteLine($"Logged at: {path}");
+                Console.WriteLine($"Count: {errors.Count()}");
+                Console.WriteLine($"Path: {path}");
                 Console.WriteLine("================================================================================================================");
 
                 if (File.Exists(path))
@@ -78,19 +84,34 @@ namespace NuGetValidators.Utility
                     File.Delete(path);
                 }
 
-                using (StreamWriter w = File.AppendText(path))
+                using (StreamWriter file = File.AppendText(path))
                 {
+                    var array = new JArray();
                     foreach (var error in errors)
                     {
-                        w.WriteLine(error);
+                        array.Add(error.ToJson());
                     }
+
+                    var json = new JObject
+                    {
+                        ["Type"] = errorType,
+                        ["Descriptoion"] = errorDescription,
+                        ["errors"] = array
+                    };
+
+                    var settings = new JsonSerializerSettings()
+                    {
+                        Formatting = Formatting.Indented
+                    };
+                    var serializer = JsonSerializer.Create(settings);
+                    serializer.Serialize(file, json);
                 }
             }
         }
 
-        private static void LogCollectionToXslt(string logPath,
+        private static void LogCollectionToXslt(
+            string logPath,
             Dictionary<string, Dictionary<string, List<string>>> collection,
-            HashSet<string> languages,
             string logFileName,
             string logDescription)
         {
@@ -120,7 +141,7 @@ namespace NuGetValidators.Utility
                             line.Append(",");
                             line.Append(resource);
                             line.Append(",");
-                            foreach (var language in languages)
+                            foreach (var language in LocaleUtility.LocaleStrings)
                             {
                                 line.Append(collection[dll][resource].Contains(language) ? "Error" : "");
                                 line.Append(",");
@@ -133,19 +154,19 @@ namespace NuGetValidators.Utility
             }
         }
 
-        private static void LogCollectionToXslt(string logPath,
-           Dictionary<string, List<string>> collection,
-            HashSet<string> languages,
+        private static void LogCollectionToXslt(
+            string logPath,
+            Dictionary<string, List<string>> collection,
             string logFileName,
             string logDescription)
         {
-            if (collection.Keys.Where(key => collection[key].Count() != languages.Count()).Any())
+            if (collection.Keys.Where(key => collection[key].Count() < LocaleUtility.LocaleStrings.Count()).Any())
             {
                 var path = Path.Combine(logPath, logFileName + ".csv");
 
                 Console.WriteLine("================================================================================================================");
                 Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != languages.Count()).Count()}");
+                Console.WriteLine($"Unique non-translated count: {collection.Keys.Where(key => collection[key].Count() != LocaleUtility.LocaleStrings.Count()).Count()}");
                 Console.WriteLine($"Logged at: {path}");
                 Console.WriteLine("================================================================================================================");
 
@@ -159,52 +180,18 @@ namespace NuGetValidators.Utility
                     w.WriteLine("Dll Name, cs, de, es, fr, it, ja, ko, pl, pt-br, ru, tr, zh-hans, zh-hant");
                     foreach (var dll in collection.Keys)
                     {
-                        if (collection[dll].Count != languages.Count())
+                        if (collection[dll].Count != LocaleUtility.LocaleStrings.Count())
                         {
                             var line = new StringBuilder();
                             line.Append(dll);
                             line.Append(",");
-                            foreach (var language in languages)
+                            foreach (var language in LocaleUtility.LocaleStrings)
                             {
                                 line.Append(!collection[dll].Contains(language) ? "Error" : "");
                                 line.Append(",");
                             }
 
                             w.WriteLine(line.ToString());
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void LogCollectionToXsltSimple(string logPath,
-            Dictionary<string, Dictionary<string, List<string>>> collection,
-            string logFileName,
-            string logDescription)
-        {
-            if (collection.Keys.Any())
-            {
-                var path = Path.Combine(logPath, logFileName + "_Simple.csv");
-
-                Console.WriteLine("================================================================================================================");
-                Console.WriteLine($"Type: {logFileName} - {logDescription}");
-                Console.WriteLine($"Logged at: {path}");
-                Console.WriteLine("================================================================================================================");
-
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-                using (StreamWriter w = File.AppendText(path))
-                {
-                    foreach (var dll in collection.Keys)
-                    {
-                        foreach (var resource in collection[dll].Keys)
-                        {
-                            foreach (var langauge in collection[dll][resource])
-                            {
-                                w.WriteLine(string.Concat(dll, ",", resource, ",", langauge));
-                            }
                         }
                     }
                 }
