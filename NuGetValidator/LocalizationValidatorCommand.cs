@@ -17,8 +17,7 @@ namespace NuGetValidator
         private static readonly string VsixExtractPathDescription = "Path to extract NuGet.Tools.Vsix into. Folder need not be present, but Program should have write access to the location.";
         private static readonly string OutputPathDescription = "Path to the directory for writing errors. File need not be present, but Program should have write access to the location.";
         private static readonly string CommentsPathDescription = "Path to the local NuGet localization repository. e.g. - <repo_root>\\Main\\localize\\comments\\15";
-        private static readonly string FilesDescription = "comma line separated list of files. This option is used to validate a locally built NuGet repository.";
-        private static readonly string FilesInFileDescription = "File containing list of files one per line. This option is used to validate a locally built NuGet repository.";
+        private static readonly string ArtifactsPathDescription = "Path to the local NuGet artifacts folder. This option is used to validate a locally built NuGet repository.";
 
 
         public static void Register(CommandLineApplication app)
@@ -53,14 +52,9 @@ namespace NuGetValidator
                     CommentsPathDescription,
                     CommandOptionType.SingleValue);
 
-                var files = localizationValidator.Option(
-                    "-f|--files",
-                    FilesDescription,
-                    CommandOptionType.SingleValue);
-
-                var filesInFile = localizationValidator.Option(
-                    "-f|--files-in-file",
-                    FilesInFileDescription,
+                var artifactsPath = localizationValidator.Option(
+                    "-a|--artifacts-path",
+                    ArtifactsPathDescription,
                     CommandOptionType.SingleValue);
 
                 localizationValidator.OnExecute(() =>
@@ -84,32 +78,16 @@ namespace NuGetValidator
                     }
                     else
                     {
-                        if ((!files.HasValue() && !filesInFile.HasValue()) || !outputPath.HasValue())
+                        if (!artifactsPath.HasValue() || !outputPath.HasValue())
                         {
                             Console.WriteLine("Since -x|--vsix switch was not passed, please enter the following arguments - ");
-                            Console.WriteLine($"{files.ShortName}|{files.LongName}: {files.Description}");
-                            Console.WriteLine($"OR");
-                            Console.WriteLine($"{filesInFile.ShortName}|{filesInFile.LongName}: {filesInFile.Description}");
+                            Console.WriteLine($"{artifactsPath.ShortName}|{artifactsPath.LongName}: {artifactsPath.Description}");
                             Console.WriteLine($"{outputPath.ShortName}|{outputPath.LongName}: {outputPath.Description}");
                             exitCode = 1;
                         }
                         else
                         {
-                            var filesList = Enumerable.Empty<string>()
-                                .ToList();
-
-                            if (files.HasValue())
-                            {
-                                filesList = FileUtility.Split(files.Value(), ',')
-                                    .ToList();
-                            }
-                            else
-                            {
-                                filesList = FileUtility.ReadFilesFromFile(filesInFile.Value())
-                                    .ToList();
-                            }
-
-                            exitCode = LocalizationValidator.ExecuteForFiles(filesList, outputPath.Value(), commentsPath.Value());
+                            exitCode = LocalizationValidator.ExecuteForArtifacts(artifactsPath.Value(), outputPath.Value(), commentsPath.Value());
                         }
                     }
 
