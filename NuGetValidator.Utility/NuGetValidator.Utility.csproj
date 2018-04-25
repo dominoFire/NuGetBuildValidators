@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <Version>2.0.0.0</Version>
-    <ReleaseLabel>beta1</ReleaseLabel>
+    <ReleaseLabel>beta2</ReleaseLabel>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageVersion Condition=" '$(ReleaseLabel)'!=''">$(Version)-$(ReleaseLabel)</PackageVersion>

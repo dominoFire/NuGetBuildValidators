@@ -760,7 +760,8 @@ namespace NuGetValidator.Localization
                 // These are treated as fatal errors
                 result = 1;
             }
-            if (_localizedDlls.Keys.Any(key => !_localizedDlls[key].HasExpectedLocalizedAssemblies()))
+            if (_resultSummary.ExecutionType == ExecutionType.Vsix && 
+                _localizedDlls.Keys.Any(key => !_localizedDlls[key].HasExpectedLocalizedAssemblies()))
             {
                 // These are treated as fatal errors
                 result = 1;
