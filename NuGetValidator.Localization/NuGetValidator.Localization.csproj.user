@@ -3,4 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <StartArguments>\\wsr-tc\Drops\NuGet.Signed.AllLanguages\latest-successful\Signed\VSIX\15\NuGet.Tools.vsix F:\validation\NuGetValidators.Localization\NuGet.Tools.Vsix F:\validation \NuGetValidators.Localization E:\NuGet TFS\Main\localize\comments\15</StartArguments>
   </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>true</ShowAllFiles>
+  </PropertyGroup>
 </Project>
