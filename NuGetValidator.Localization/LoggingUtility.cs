@@ -11,12 +11,12 @@ namespace NuGetValidator.Localization
     internal static class LoggingUtility
     {
         public static void LogErrors(
-            string logPath, 
+            string logPath,
             IEnumerable<StringCompareResult> identicalLocalizedStrings,
             IEnumerable<StringCompareResult> mismatchErrors,
             IEnumerable<StringCompareResult> missingLocalizedErrors,
-            IEnumerable<StringCompareResult> lockedStrings, 
-            Dictionary<string, Dictionary<string, List<string>>> nonLocalizedStringDeduped, 
+            IEnumerable<StringCompareResult> lockedStrings,
+            Dictionary<string, Dictionary<string, List<string>>> nonLocalizedStringDeduped,
             Dictionary<string, LocalizedAssemblyResult> localizedDlls,
             ResultSummary resultSummary)
         {
@@ -75,13 +75,16 @@ namespace NuGetValidator.Localization
 
             resultSummary.Results.Add(result);
 
-            result = LogWrongLocalizedAssemblyPathErrors(
-                logPath,
-                localizedDlls,
-                ResultType.WrongLocalizedAssemblyPaths,
-                "These assemblies do not have localized dlls at the expected locations.");
+            if (resultSummary.ExecutionType == ExecutionType.Vsix)
+            {
+                result = LogWrongLocalizedAssemblyPathErrors(
+                    logPath,
+                    localizedDlls,
+                    ResultType.WrongLocalizedAssemblyPaths,
+                    "These assemblies do not have localized dlls at the expected locations.");
 
-            resultSummary.Results.Add(result);
+                resultSummary.Results.Add(result);
+            }
 
             LogResultSummary(
                 logPath,
