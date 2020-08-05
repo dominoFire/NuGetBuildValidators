@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net461</TargetFramework>
+    <TargetFramework>$(TargetFrameworkApp)</TargetFramework>
     <RootNamespace>NuGetValidator</RootNamespace>
     <AssemblyName>NuGetValidator</AssemblyName>
     <IsTool>true</IsTool>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>2.0.1.0</Version>
+    <Version>2.0.2.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageVersion Condition=" '$(ReleaseLabel)'!=''">$(Version)-$(ReleaseLabel)</PackageVersion>
@@ -19,6 +19,7 @@
     <RepositoryUrl>https://github.com/mishra14/NuGetBuildValidators</RepositoryUrl>
     <PackageProjectUrl>https://github.com/mishra14/NuGetBuildValidators</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
+    <PackAsTool>true</PackAsTool>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,25 +32,4 @@
     <ProjectReference Include="..\NuGetValidator.Localization\NuGetValidator.Localization.csproj" />
     <ProjectReference Include="..\NuGetValidator.Utility\NuGetValidator.Utility.csproj" />
   </ItemGroup>
-
-  <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="ILMerge" />
-  </Target>
-
-  <Target Name="ILMerge">
-    <PropertyGroup>
-      <FinalOutputPath>$(MSBuildProjectDirectory)\$(OutputPath)</FinalOutputPath>
-    </PropertyGroup>
-    <ItemGroup>
-      <BuildArtifacts Include="$(FinalOutputPath)\*.dll" Exclude="$(FinalOutputPath)\sn*" />
-    </ItemGroup>
-    <PropertyGroup>
-      <PathToBuiltExe>$(FinalOutputPath)NuGetValidator.exe</PathToBuiltExe>
-      <PathToMergedExe>$(FinalOutputPath)NuGetValidator.exe</PathToMergedExe>
-      <PathToILMergeLog>$(FinalOutputPath)IlMergeLog.txt</PathToILMergeLog>
-      <IlmergeCommand>$(ILRepack) $(PathToBuiltExe) @(BuildArtifacts, ' ') /out:$(PathToMergedExe) /log:$(PathToILMergeLog)</IlmergeCommand>
-    </PropertyGroup>
-    <Exec Command="$(IlmergeCommand)" ContinueOnError="false" />
-  </Target>
-
 </Project>

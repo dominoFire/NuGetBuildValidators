@@ -2,13 +2,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>library</OutputType>
-    <TargetFramework>net451</TargetFramework>
+    <TargetFramework>$(TargetFrameworkLibrary)</TargetFramework>
     <RootNamespace>NuGetValidator.Localization</RootNamespace>
     <AssemblyName>NuGetValidator.Localization</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>2.0.1.0</Version>
+    <Version>2.0.2.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageVersion Condition=" '$(ReleaseLabel)'!=''">$(Version)-$(ReleaseLabel)</PackageVersion>
@@ -28,26 +28,4 @@
   <ItemGroup>
     <ProjectReference Include="..\NuGetValidator.Utility\NuGetValidator.Utility.csproj" />
   </ItemGroup>
-
-  <Target Name="PublishAndIlMerge" BeforeTargets="_IntermediatePack">
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="ILMerge" />
-  </Target>
-
-
-  <Target Name="ILMerge">
-    <PropertyGroup>
-      <FinalOutputPath>$(MSBuildProjectDirectory)\$(OutputPath)</FinalOutputPath>
-    </PropertyGroup>
-    <ItemGroup>
-      <BuildArtifacts Include="$(FinalOutputPath)\*.dll" />
-    </ItemGroup>
-    <PropertyGroup>
-      <PathToMergedExe>$(FinalOutputPath)NuGetValidator.Localization.exe</PathToMergedExe>
-      <PathToILMergeLog>$(FinalOutputPath)IlMergeLog.txt</PathToILMergeLog>
-      <IlmergeCommand>$(ILRepack) @(BuildArtifacts, ' ') /out:$(PathToMergedExe) /log:$(PathToILMergeLog)</IlmergeCommand>
-    </PropertyGroup>
-    <Exec Command="$(IlmergeCommand)" ContinueOnError="false" />
-  </Target>
-
-
 </Project>

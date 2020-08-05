@@ -2,13 +2,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup>
-    <TargetFramework>net45</TargetFramework>
+    <TargetFramework>$(TargetFrameworkLibrary)</TargetFramework>
     <RootNamespace>NuGetValidator.Utility</RootNamespace>
     <AssemblyName>NuGetValidator.Utility</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>2.0.1.0</Version>
+    <Version>2.0.2.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageVersion Condition=" '$(ReleaseLabel)'!=''">$(Version)-$(ReleaseLabel)</PackageVersion>
